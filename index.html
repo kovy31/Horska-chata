@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Kalkulačka ubytování – přátelská dovolená</title>
-  <link rel="stylesheet" href="./assets/style.css" />
+  <link rel="stylesheet" href="./assets/style.css?v=20260210-2" />
 </head>
 <body>
   <div class="container">
@@ -14,57 +14,50 @@
       <div>
         <h1>Kalkulačka ubytování</h1>
         <div class="sub">
-          Rozdělení ceny podle obsazení pokojů<br>
-          7× manželský pokoj + 1× dětský pokoj (75 %)
+          Rozdělení ceny podle obsazení pokojů · 7× manželský + 1× dětský (75 %)
         </div>
       </div>
     </div>
 
-    <!-- AIRBNB STYLE CARD -->
-<div class="airWrap">
-  <a class="airCard" href="https://www.airbnb.cz/rooms/1509296019313360437" target="_blank" rel="noreferrer">
-    <div class="airImgWrap">
-      <img
-        class="airImg"
-        src="https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3cc519a7-fdd2-44a7-a44a-870c4d051530.jpeg?im_w=1200"
-        alt="Black Diamond – Chalet Raven"
-        loading="lazy"
-      />
+    <!-- AIRBNB STYLE CARD (SLIDER) -->
+    <div class="airWrap">
+      <a class="airCard" href="https://www.airbnb.cz/rooms/1509296019313360437" target="_blank" rel="noreferrer">
+        <div class="airImgWrap">
+          <img
+            id="airSlideImg"
+            class="airImg"
+            src="https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3cc519a7-fdd2-44a7-a44a-870c4d051530.jpeg?im_w=1200"
+            alt="Black Diamond – Chalet Raven"
+            loading="lazy"
+          />
 
-      <div class="airPill">Guest favorite</div>
-      <div class="airHeart" aria-hidden="true">♡</div>
+          <div class="airPill">Guest favorite</div>
+          <div class="airHeart" aria-hidden="true">♡</div>
 
-      <div class="airBadges">
-        <span class="airBadge">📅 12.–18. 7. 2026</span>
-        <span class="airBadge">💰 114 938 Kč</span>
-      </div>
+          <div class="airBadges">
+            <span class="airBadge">📅 12.–18. 7. 2026</span>
+            <span class="airBadge">💰 114 938 Kč</span>
+          </div>
 
-      <div class="airDots" aria-hidden="true">
-        <span class="dot active"></span>
-        <span class="dot"></span>
-        <span class="dot"></span>
-        <span class="dot"></span>
-        <span class="dot"></span>
-      </div>
+          <div class="airDots" id="airDots" aria-hidden="true"></div>
+        </div>
+
+        <div class="airBody">
+          <div class="airTopRow">
+            <div class="airTitle">Chalet in Tignes</div>
+            <div class="airRating">★ 4.92 <span class="airReviews">(24)</span></div>
+          </div>
+
+          <div class="airSub">Black Diamond – Chalet Raven</div>
+          <div class="airSub">7× manželský pokoj + 1× dětský pokoj (4 osoby)</div>
+
+          <div class="airPriceRow">
+            <span class="airPrice">114 938 Kč</span>
+            <span class="airMuted">· 6 nocí (12.–18. 7. 2026)</span>
+          </div>
+        </div>
+      </a>
     </div>
-
-    <div class="airBody">
-      <div class="airTopRow">
-        <div class="airTitle">Chalet in Tignes</div>
-        <div class="airRating">★ 4.92 <span class="airReviews">(24)</span></div>
-      </div>
-
-      <div class="airSub">Black Diamond – Chalet Raven</div>
-      <div class="airSub">7× manželský pokoj + 1× dětský pokoj (4 osoby)</div>
-
-      <div class="airPriceRow">
-        <span class="airPrice">114 938 Kč</span>
-        <span class="airMuted">· 6 nocí (12.–18. 7. 2026)</span>
-      </div>
-    </div>
-  </a>
-</div>
-
 
     <!-- KPI -->
     <div class="kpi">
@@ -89,9 +82,7 @@
 
     <!-- PAYMENTS -->
     <div class="tableWrap">
-      <h2 style="margin:14px 0 6px 0; font-size:16px;">
-        Kdo kolik platí
-      </h2>
+      <h2 style="margin:14px 0 6px 0; font-size:16px;">Kdo kolik platí</h2>
 
       <div class="desktopTable">
         <table class="table" id="payTable">
@@ -111,12 +102,12 @@
     </div>
 
     <div class="footer">
-      Data se načítají automaticky z GitHubu · pouze pro zobrazení
+      Data se načítají automaticky z GitHubu (Issue) · zobrazení pro kamarády
     </div>
   </div>
 
-  <script src="./assets/config.js"></script>
-  <script src="./assets/common.js"></script>
-  <script src="./assets/view.js"></script>
+  <script src="./assets/config.js?v=20260210-2"></script>
+  <script src="./assets/common.js?v=20260210-2"></script>
+  <script src="./assets/view.js?v=20260210-2"></script>
 </body>
 </html>
