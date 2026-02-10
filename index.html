@@ -1,0 +1,79 @@
+<!-- index.html -->
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kalkulačka ubytování – přátelská dovolená</title>
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>Kalkulačka ubytování</h1>
+        <div class="sub">
+          7× manželský pokoj (2 osoby) + 1× dětský pokoj (4 osoby, 75 % ceny).
+          Celková cena: <strong id="totalTop">—</strong>
+        </div>
+      </div>
+      <div class="sub">
+        <a href="./edit.html">Editace (pro správce)</a> ·
+        <a href="https://www.airbnb.com/rooms/1509296019313360437" target="_blank" rel="noreferrer">Airbnb listing</a>
+      </div>
+    </div>
+
+    <div class="kpi">
+      <div class="item">
+        <div class="label">Počet zapsaných lidí</div>
+        <div class="value" id="kpiPeople">—</div>
+      </div>
+      <div class="item">
+        <div class="label">Cena za 1 váhu</div>
+        <div class="value" id="kpiUnit">—</div>
+      </div>
+      <div class="item">
+        <div class="label">Součet plateb</div>
+        <div class="value" id="kpiSum">—</div>
+      </div>
+    </div>
+
+    <hr class="sep" />
+
+    <div class="grid" id="roomsGrid"></div>
+
+    <div class="tableWrap">
+      <h2 style="margin:14px 0 6px 0; font-size:16px;">Kdo kolik platí</h2>
+
+      <div class="controls">
+        <button class="primary" id="btnReload">Načíst z GitHubu</button>
+        <button id="btnCopy">Zkopírovat souhrn</button>
+      </div>
+
+      <div class="desktopTable">
+        <table class="table" id="payTable">
+          <thead>
+            <tr>
+              <th>Jméno</th>
+              <th>Pokoj</th>
+              <th>Váha</th>
+              <th>Platí</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="mobileList" id="payList"></div>
+    </div>
+
+    <div class="footer">
+      Data se čtou z GitHub Issue (public repo). Výpočet vždy dorovnává na přesnou celkovou částku.
+    </div>
+  </div>
+
+  <script src="./assets/config.js"></script>
+  <script src="./assets/common.js"></script>
+  <script src="./assets/view.js"></script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!-- edit.html -->
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Editace – Kalkulačka ubytování</title>
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>Editace obsazení</h1>
+        <div class="sub">
+          Vyplň jména do pokojů. Dětský pokoj se počítá jako 75 % ceny standard osoby.
+        </div>
+      </div>
+      <div class="sub">
+        <a href="./index.html">← Zobrazení</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Nastavení</h2>
+      <div class="controls">
+        <div style="flex:1; min-width:220px;">
+          <label class="sub">Celková cena (Kč)</label>
+          <input id="inpTotal" type="number" min="1" step="1" />
+          <small class="help">Součet plateb se vždy dorovná na přesnou částku.</small>
+        </div>
+
+        <div style="flex:1; min-width:220px;">
+          <label class="sub">Dětský pokoj koeficient</label>
+          <input id="inpKids" type="number" min="0.1" max="1" step="0.01" />
+          <small class="help">0.75 = 75 % standardu.</small>
+        </div>
+
+        <div style="flex:1; min-width:260px;">
+          <label class="sub">GitHub token (jen pro uložení)</label>
+          <input id="inpToken" type="password" placeholder="Fine-grained PAT (Issues)" />
+          <small class="help">
+            Token se neukládá do GitHubu ani do souboru. Doporučuju fine-grained PAT pouze pro Issues v tomto repu.
+          </small>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="primary" id="btnLoad">Načíst z GitHubu</button>
+        <button class="primary" id="btnSave">Uložit do GitHubu</button>
+        <button class="danger" id="btnReset">Vymazat jména (lokálně)</button>
+      </div>
+    </div>
+
+    <hr class="sep" />
+
+    <div class="grid" id="editGrid"></div>
+
+    <div class="footer">
+      Ukládání probíhá do GitHub Issue s názvem <strong>Booking data</strong> (lze změnit v assets/config.js).
+    </div>
+  </div>
+
+  <script src="./assets/config.js"></script>
+  <script src="./assets/common.js"></script>
+  <script src="./assets/edit.js"></script>
+</body>
+</html>
