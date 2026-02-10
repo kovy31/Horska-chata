@@ -1,4 +1,3 @@
-<!-- index.html -->
 <!doctype html>
 <html lang="cs">
 <head>
@@ -9,20 +8,68 @@
 </head>
 <body>
   <div class="container">
+
+    <!-- HEADER -->
     <div class="header">
       <div>
-        <h1>Obsazené pokoje</h1>
+        <h1>Kalkulačka ubytování</h1>
         <div class="sub">
-          7× manželský pokoj (2 osoby) + 1× dětský pokoj (4 osoby, 75 % ceny).
-          Celková cena: <strong id="totalTop">—</strong>
+          Rozdělení ceny podle obsazení pokojů<br>
+          7× manželský pokoj + 1× dětský pokoj (75 %)
         </div>
-      </div>
-      <div class="sub">
-        <a href="./edit.html">Editace (pro správce)</a> ·
-        <a href="https://www.airbnb.com/rooms/1509296019313360437" target="_blank" rel="noreferrer">Airbnb listing</a>
       </div>
     </div>
 
+    <!-- AIRBNB LISTING CARD -->
+    <div class="listingCard">
+      <a
+        class="listingMedia"
+        href="https://www.airbnb.cz/rooms/1509296019313360437"
+        target="_blank"
+        rel="noreferrer"
+      >
+        <img
+          src="https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3cc519a7-fdd2-44a7-a44a-870c4d051530.jpeg?im_w=1200"
+          alt="Black Diamond – Chalet Raven"
+          loading="lazy"
+        />
+
+        <div class="listingBadges">
+          <div class="badgeStrong">📅 12.–18. 7. 2026</div>
+          <div class="badgeStrong">💰 114 938 Kč</div>
+        </div>
+      </a>
+
+      <div class="listingBody">
+        <div class="listingTop">
+          <div>
+            <div class="listingTitle">Black Diamond – Chalet Raven</div>
+            <div class="listingLocation">
+              Tignes, Auvergne-Rhône-Alpes, Francie
+            </div>
+          </div>
+
+          <a
+            class="listingCta"
+            href="https://www.airbnb.cz/rooms/1509296019313360437"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Otevřít na Airbnb
+          </a>
+        </div>
+
+        <div class="listingMeta">
+          <div class="pill">18 osob</div>
+          <div class="pill">8 ložnic</div>
+          <div class="pill">8 koupelen</div>
+          <div class="pill">7× manželský pokoj</div>
+          <div class="pill">1× dětský pokoj (4 osoby)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI -->
     <div class="kpi">
       <div class="item">
         <div class="label">Počet zapsaných lidí</div>
@@ -40,15 +87,14 @@
 
     <hr class="sep" />
 
+    <!-- ROOMS -->
     <div class="grid" id="roomsGrid"></div>
 
+    <!-- PAYMENTS -->
     <div class="tableWrap">
-      <h2 style="margin:14px 0 6px 0; font-size:16px;">Kdo kolik platí</h2>
-
-      <div class="controls">
-        <button class="primary" id="btnReload">Načíst z GitHubu</button>
-        <button id="btnCopy">Zkopírovat souhrn</button>
-      </div>
+      <h2 style="margin:14px 0 6px 0; font-size:16px;">
+        Kdo kolik platí
+      </h2>
 
       <div class="desktopTable">
         <table class="table" id="payTable">
@@ -67,7 +113,9 @@
       <div class="mobileList" id="payList"></div>
     </div>
 
-    
+    <div class="footer">
+      Data se načítají automaticky z GitHubu · pouze pro zobrazení
+    </div>
   </div>
 
   <script src="./assets/config.js"></script>
