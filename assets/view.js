@@ -1,19 +1,32 @@
 // assets/view.js
 
 // ====== SLIDER CONFIG ======
-// Sem dej URL fotek z Airbnb (muscache). 1. už tam je.
-// Přidej další 3–6 URL (když nějaká neexistuje, slider ji přeskočí).
+// DOPLŇ si sem další URL fotek (muscache) z Airbnb.
+// Slider poběží i s jednou fotkou.
 const AIRBNB_IMAGES = [
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3cc519a7-fdd2-44a7-a44a-870c4d051530.jpeg?im_w=1200",
-  // DOPLŇ DALŠÍ:
-  // "https://a0.muscache.com/im/pictures/....jpeg?im_w=1200",
-  // "https://a0.muscache.com/im/pictures/....jpeg?im_w=1200",
+  "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3d6a0041-65ad-4ba4-90c1-d971de85fe95.jpeg?aki_policy=xx_large",
+  "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3a516abc-1e0d-4f69-9bee-6d5095ac0ef3.jpeg?aki_policy=xx_large",
+  "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/105b8a30-e224-4bc2-a3a7-602d091d8673.jpeg?aki_policy=xx_large",
+  "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/78c8bcc9-b723-4e29-993e-67e8bed7e175.jpeg?aki_policy=xx_large",
+  "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/06912285-7757-4cf7-bb84-aacf81473236.jpeg?aki_policy=xx_large",
+  "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/af9bb574-7d11-4a70-8036-d81f24b4bd9e.jpeg?aki_policy=xx_large",
+
+  // "https://a0.muscache.com/im/pictures/...jpeg?im_w=1200",
+  // "https://a0.muscache.com/im/pictures/...jpeg?im_w=1200",
 ];
 
 const SLIDE_MS = 4500;
 
+// --- DOM ---
 const elRoomsGrid = document.getElementById("roomsGrid");
-const elPeople = document.getElementById("kpiPeople");
+
+const elWhoChips = document.getElementById("whoChips");
+const elWhoStat = document.getElementById("whoStat");
+const elCapStat = document.getElementById("capStat");
+
+// Finance
+const elTotal = document.getElementById("kpiTotal");
 const elUnit = document.getElementById("kpiUnit");
 const elSum = document.getElementById("kpiSum");
 const payTableBody = document.querySelector("#payTable tbody");
@@ -23,8 +36,50 @@ const payList = document.getElementById("payList");
 const slideImg = document.getElementById("airSlideImg");
 const dotsWrap = document.getElementById("airDots");
 
-function safeSetText(el, text) {
-  if (el) el.textContent = text;
+function uniqSortedNamesFromRooms(data) {
+  const set = new Set();
+  for (const room of data.rooms) {
+    for (const raw of room.people) {
+      const name = (raw || "").trim();
+      if (name) set.add(name);
+    }
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, "cs"));
+}
+
+function totalCapacity(data) {
+  return data.rooms.reduce((sum, r) => sum + (Array.isArray(r.people) ? r.people.length : 0), 0);
+}
+
+function filledBeds(data) {
+  let n = 0;
+  for (const r of data.rooms) {
+    for (const p of r.people) if ((p || "").trim()) n++;
+  }
+  return n;
+}
+
+function renderWhoGoes(data) {
+  const names = uniqSortedNamesFromRooms(data);
+  elWhoChips.innerHTML = "";
+
+  if (names.length === 0) {
+    elWhoChips.innerHTML = `<div class="emptyNote">Zatím nikdo není zapsaný v pokojích.</div>`;
+    elWhoStat.textContent = "0 potvrzených";
+    return;
+  }
+
+  for (const name of names) {
+    const chip = document.createElement("div");
+    chip.className = "chip";
+    chip.textContent = name;
+    elWhoChips.appendChild(chip);
+  }
+
+  const cap = totalCapacity(data);
+  elWhoStat.textContent = `${names.length} potvrzených`;
+  // volitelně: ukázat i kapacitu
+  // elWhoStat.textContent = `${names.length} / ${cap} potvrzených`;
 }
 
 function renderRooms(data, payments) {
@@ -39,16 +94,31 @@ function renderRooms(data, payments) {
   for (const room of data.rooms) {
     const card = document.createElement("div");
     card.className = "card";
-    const isKids = room.type === "kids";
 
+    const capacity = room.people.length;
+    const filled = room.people.filter(p => (p || "").trim()).length;
+    const isFull = filled === capacity && capacity > 0;
+    const isEmpty = filled === 0;
+
+    const statusClass = isFull ? "roomStatus full" : isEmpty ? "roomStatus empty" : "roomStatus partial";
+    const statusText = isFull ? "Plno" : isEmpty ? "Volno" : "Částečně";
+
+    const isKids = room.type === "kids";
     card.innerHTML = `
-      <h2>${room.name}</h2>
-      <div class="meta">${isKids ? "Dětský pokoj (0.75)" : "Manželský pokoj (1.00)"}</div>
+      <div class="roomHead">
+        <div>
+          <h2>${room.name}</h2>
+          <div class="meta">${isKids ? "Dětský pokoj (0.75)" : "Manželský pokoj (1.00)"}</div>
+        </div>
+        <div class="${statusClass}">
+          ${statusText} · ${filled}/${capacity}
+        </div>
+      </div>
       <div class="list"></div>
     `;
 
     const list = card.querySelector(".list");
-    const rows = byRoom.get(room.id) || [];
+    const rows = (byRoom.get(room.id) || []).slice();
 
     if (rows.length === 0) {
       const empty = document.createElement("div");
@@ -62,9 +132,9 @@ function renderRooms(data, payments) {
         row.innerHTML = `
           <div>
             <div class="who">${p.name}</div>
-            <div class="meta">váha ${p.weight.toFixed(2)}</div>
+            <div class="meta">potvrzeno</div>
           </div>
-          <div class="who">${formatCzk(p.pay)}</div>
+          <div class="meta">${formatCzk(p.pay)}</div>
         `;
         list.appendChild(row);
       }
@@ -72,9 +142,17 @@ function renderRooms(data, payments) {
 
     elRoomsGrid.appendChild(card);
   }
+
+  const cap = totalCapacity(data);
+  const filledTotal = filledBeds(data);
+  elCapStat.textContent = `Obsazeno ${filledTotal}/${cap}`;
 }
 
-function renderPeopleTable(data, payments) {
+function renderFinance(data, payments) {
+  elTotal.textContent = formatCzk(data.totalCzk);
+  elUnit.textContent = payments.unit ? formatCzk(payments.unit) : "—";
+  elSum.textContent = formatCzk(payments.totalRounded);
+
   const rows = [...payments.rows].sort((a, b) => a.name.localeCompare(b.name, "cs"));
 
   payTableBody.innerHTML = "";
@@ -101,10 +179,6 @@ function renderPeopleTable(data, payments) {
     `;
     payList.appendChild(card);
   }
-
-  safeSetText(elPeople, String(rows.length));
-  safeSetText(elUnit, payments.unit ? formatCzk(payments.unit) : "—");
-  safeSetText(elSum, formatCzk(payments.totalRounded));
 }
 
 async function loadAndRender() {
@@ -112,8 +186,9 @@ async function loadAndRender() {
     const data = await loadDataFromGitHub();
     const payments = computePayments(data);
 
+    renderWhoGoes(data);
     renderRooms(data, payments);
-    renderPeopleTable(data, payments);
+    renderFinance(data, payments);
   } catch (e) {
     alert("Nepodařilo se načíst data z GitHubu:\n" + e.message);
   }
@@ -126,7 +201,7 @@ function makeDots(count) {
     const d = document.createElement("span");
     d.className = "dot" + (i === 0 ? " active" : "");
     d.addEventListener("click", (ev) => {
-      ev.preventDefault(); // nekliknout na link
+      ev.preventDefault();
       setSlide(i);
       restartTimer();
     });
@@ -142,7 +217,6 @@ function setActiveDot(idx) {
 let slideIndex = 0;
 let timer = null;
 
-// otestuje URL obrázku – když failne, přeskočí
 function tryLoadImage(url) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -157,23 +231,18 @@ let usableImages = [];
 async function initSlider() {
   if (!slideImg || !dotsWrap) return;
 
-  // vyfiltruj jen funkční obrázky (ať to nespadne na rozbité URL)
   const checks = await Promise.all(AIRBNB_IMAGES.map(u => tryLoadImage(u)));
   usableImages = AIRBNB_IMAGES.filter((_, i) => checks[i]);
 
   if (usableImages.length === 0) {
-    // nech tam defaultní src z HTML
     usableImages = [slideImg.src];
   }
 
   makeDots(usableImages.length);
-
   slideIndex = 0;
   setSlide(0);
 
-  if (usableImages.length > 1) {
-    startTimer();
-  }
+  if (usableImages.length > 1) startTimer();
 }
 
 function setSlide(idx) {
@@ -184,9 +253,7 @@ function setSlide(idx) {
 }
 
 function startTimer() {
-  timer = setInterval(() => {
-    setSlide(slideIndex + 1);
-  }, SLIDE_MS);
+  timer = setInterval(() => setSlide(slideIndex + 1), SLIDE_MS);
 }
 
 function restartTimer() {
@@ -194,6 +261,6 @@ function restartTimer() {
   if (usableImages.length > 1) startTimer();
 }
 
-// ====== INIT ======
+// INIT
 loadAndRender();
 initSlider();
