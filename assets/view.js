@@ -5,13 +5,6 @@
 // Slider poběží i s jednou fotkou.
 const AIRBNB_IMAGES = [
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3cc519a7-fdd2-44a7-a44a-870c4d051530.jpeg?im_w=1200",
-  "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3d6a0041-65ad-4ba4-90c1-d971de85fe95.jpeg?aki_policy=xx_large",
-  "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3a516abc-1e0d-4f69-9bee-6d5095ac0ef3.jpeg?aki_policy=xx_large",
-  "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/105b8a30-e224-4bc2-a3a7-602d091d8673.jpeg?aki_policy=xx_large",
-  "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/78c8bcc9-b723-4e29-993e-67e8bed7e175.jpeg?aki_policy=xx_large",
-  "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/06912285-7757-4cf7-bb84-aacf81473236.jpeg?aki_policy=xx_large",
-  "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/af9bb574-7d11-4a70-8036-d81f24b4bd9e.jpeg?aki_policy=xx_large",
-
   // "https://a0.muscache.com/im/pictures/...jpeg?im_w=1200",
   // "https://a0.muscache.com/im/pictures/...jpeg?im_w=1200",
 ];
@@ -27,7 +20,7 @@ const elCapStat = document.getElementById("capStat");
 
 // Finance
 const elTotal = document.getElementById("kpiTotal");
-const elUnit = document.getElementById("kpiUnit");
+const elUnit = document.getElementById("kpiUnit"); // "Cena za osobu"
 const elSum = document.getElementById("kpiSum");
 const payTableBody = document.querySelector("#payTable tbody");
 const payList = document.getElementById("payList");
@@ -76,10 +69,7 @@ function renderWhoGoes(data) {
     elWhoChips.appendChild(chip);
   }
 
-  const cap = totalCapacity(data);
   elWhoStat.textContent = `${names.length} potvrzených`;
-  // volitelně: ukázat i kapacitu
-  // elWhoStat.textContent = `${names.length} / ${cap} potvrzených`;
 }
 
 function renderRooms(data, payments) {
@@ -104,12 +94,15 @@ function renderRooms(data, payments) {
     const statusText = isFull ? "Plno" : isEmpty ? "Volno" : "Částečně";
 
     const isKids = room.type === "kids";
-card.innerHTML = `
-  <div class="roomHead">
-    <div>
-      <h2>${room.name}</h2>
-      <div class="meta">${isKids ? "Dětský pokoj" : "Pokoj s manželskou postelí"}</div>
-    </div>
+
+    card.innerHTML = `
+      <div class="roomHead">
+        <div>
+          <h2>${room.name}</h2>
+          <div class="meta">
+            ${isKids ? "Dětský pokoj · sleva 25 %" : "Pokoj s manželskou postelí"}
+          </div>
+        </div>
         <div class="${statusClass}">
           ${statusText} · ${filled}/${capacity}
         </div>
@@ -132,7 +125,9 @@ card.innerHTML = `
         row.innerHTML = `
           <div>
             <div class="who">${p.name}</div>
-            <div class="meta">potvrzeno</div>
+            <div class="meta">
+              ${room.type === "kids" ? "potvrzeno · sleva 25 %" : "potvrzeno"}
+            </div>
           </div>
           <div class="meta">${formatCzk(p.pay)}</div>
         `;
@@ -149,6 +144,9 @@ card.innerHTML = `
 }
 
 function renderFinance(data, payments) {
+  // Pozn.: payments.unit je "cena za 1 váhu" interně,
+  // ale uživatelsky to nazýváme "Cena za osobu".
+  // (Dětský pokoj má 25% slevu -> částka se sníží.)
   elTotal.textContent = formatCzk(data.totalCzk);
   elUnit.textContent = payments.unit ? formatCzk(payments.unit) : "—";
   elSum.textContent = formatCzk(payments.totalRounded);
@@ -159,21 +157,22 @@ function renderFinance(data, payments) {
   payList.innerHTML = "";
 
   for (const r of rows) {
+    // Desktop table: 3 columns only (Name, Room, Pay)
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${r.name}</td>
       <td>${r.roomName}</td>
-      <td>${r.weight.toFixed(2)}</td>
       <td><strong>${formatCzk(r.pay)}</strong></td>
     `;
     payTableBody.appendChild(tr);
 
+    // Mobile list
     const card = document.createElement("div");
     card.className = "row";
     card.innerHTML = `
       <div>
         <div class="who">${r.name}</div>
-        <div class="meta">${r.roomName} · váha ${r.weight.toFixed(2)}</div>
+        <div class="meta">${r.roomName}${r.weight < 1 ? " · sleva 25 %" : ""}</div>
       </div>
       <div class="who">${formatCzk(r.pay)}</div>
     `;
