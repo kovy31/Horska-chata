@@ -317,3 +317,30 @@ h1{ margin:0; font-size:22px; }
   color:var(--muted);
   font-size:12px;
 }
+
+/* Equal column spacing for payments table */
+#payTable{
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* 3 columns = 3 stejné části */
+#payTable th:nth-child(1),
+#payTable td:nth-child(1){
+  width: 33.333%;
+  text-align: left;
+}
+
+#payTable th:nth-child(2),
+#payTable td:nth-child(2){
+  width: 33.333%;
+  text-align: center;
+}
+
+#payTable th:nth-child(3),
+#payTable td:nth-child(3){
+  width: 33.333%;
+  text-align: center;
+  white-space: nowrap;
+}
+
