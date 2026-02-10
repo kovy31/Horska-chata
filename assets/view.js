@@ -104,12 +104,12 @@ function renderRooms(data, payments) {
     const statusText = isFull ? "Plno" : isEmpty ? "Volno" : "Částečně";
 
     const isKids = room.type === "kids";
-    card.innerHTML = `
-      <div class="roomHead">
-        <div>
-          <h2>${room.name}</h2>
-          <div class="meta">${isKids ? "Dětský pokoj (0.75)" : "Manželský pokoj (1.00)"}</div>
-        </div>
+card.innerHTML = `
+  <div class="roomHead">
+    <div>
+      <h2>${room.name}</h2>
+      <div class="meta">${isKids ? "Dětský pokoj" : "Pokoj s manželskou postelí"}</div>
+    </div>
         <div class="${statusClass}">
           ${statusText} · ${filled}/${capacity}
         </div>
