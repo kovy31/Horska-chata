@@ -25,6 +25,8 @@ const elWhoChips = document.getElementById("whoChips");
 const elWhoStat = document.getElementById("whoStat");
 const elCapStat = document.getElementById("capStat");
 
+const elPriceScaleBody = document.getElementById("priceScaleBody");
+
 const elPayAccount = document.getElementById("payAccount");
 const elAirNote = document.getElementById("airNoteText");
 const elAirWrap = document.querySelector(".airWrap");
@@ -108,56 +110,8 @@ function filledBeds(rooms) {
   return used;
 }
 
-function countPeopleByType(rooms) {
-  let total = 0;
-  let kids = 0;
-  for (const r of rooms || []) {
-    const isKidsRoom = r.type === "kids";
-    for (const p of (r.people || [])) {
-      const n = normalizeName(p);
-      if (!n) continue;
-      total++;
-      if (isKidsRoom) kids++;
-    }
-  }
-  return { total, kids, adults: Math.max(0, total - kids) };
-}
-
 function priceForFuturePosition(idx) {
   return idx === 0 ? "A" : idx === 1 ? "B" : String(idx + 1);
-}
-
-/**
- * Pricing rules:
- * - If n <= 10: everyone share = total/10 (minimum)
- * - If 11 <= n <= 13: everyone share = total/n
- * - If n >= 14: kids share = 0.75 * standardShare, adults share = 1.0 * standardShare
- *   where standardShare = total / (adults + 0.75*kids)
- */
-function computeShares(totalCzk, nAdults, nKids) {
-  const total = Math.round(Number(totalCzk) || 0);
-  const n = Math.max(0, nAdults + nKids);
-
-  // minimum "lákací" cena
-  if (n <= 10) {
-    const per = total / 10;
-    return { mode: "min10", standard: per, kids: per, adults: per };
-  }
-
-  if (n <= 13) {
-    const per = total / n;
-    return { mode: "divide", standard: per, kids: per, adults: per };
-  }
-
-  // >= 14, kids discount 25%
-  const weight = (nAdults + 0.75 * nKids);
-  const std = weight > 0 ? (total / weight) : 0;
-  return { mode: "kids25", standard: std, kids: 0.75 * std, adults: std };
-}
-
-function roundCzk(x) {
-  // keep it clean, round to whole CZK
-  return Math.round(Number(x) || 0);
 }
 
 /**
@@ -255,6 +209,112 @@ function renderWhoGoes(data) {
   const names = uniqSortedNamesFromRooms(data.rooms);
   elWhoChips.innerHTML = names.map(n => `<span class="chip">${n}</span>`).join("");
   elWhoStat.textContent = `${names.length} osob`;
+}
+
+// -------- render: price scale (collapsible info + table) --------
+function renderPriceScale(data) {
+  if (!elPriceScaleBody) return;
+
+  const total = Math.round(Number(data.totalCzk) || 0);
+  const { total: currentN } = countPeopleByType(data.rooms);
+  const cap = totalCapacity(data.rooms);
+
+  // Build price table rows for 10..cap people
+  let tableRows = "";
+  for (let n = 10; n <= cap; n++) {
+    // Assume worst case: all adults (no kids discount) for standard price
+    const sharesAdult = computeShares(total, n, 0);
+    const priceAdult = roundCzk(sharesAdult.adults);
+
+    // For kids room price (assume at least 1 kid at this count)
+    const sharesKids = computeShares(total, n - 1, 1);
+    const priceKids = roundCzk(sharesKids.kids);
+
+    const isCurrent = n === currentN;
+    const highlight = isCurrent ? ' style="background:var(--accent);color:#000;font-weight:700;"' : "";
+    const marker = isCurrent ? " (aktuálně)" : "";
+
+    const kidsCell = sharesKids.mode === "kids25"
+      ? `<td class="center">${formatCzk(priceKids)}</td>`
+      : `<td class="center" style="opacity:.4">—</td>`;
+
+    tableRows += `<tr${highlight}>
+      <td class="center">${n} osob${marker}</td>
+      <td class="center">${formatCzk(priceAdult)}</td>
+      ${kidsCell}
+      <td class="center">${sharesAdult.mode === "min10" ? "min. cena (celkem\u00f710)" : sharesAdult.mode === "kids25" ? "d\u011btsk\u00fd \u221225 %" : "d\u011bleno " + n}</td>
+    </tr>`;
+  }
+
+  elPriceScaleBody.innerHTML = `
+    <div style="line-height:1.7; margin-bottom:18px;">
+      <p>Aby bylo v\u0161echno f\u00e9r a bez zbyte\u010dn\u00fdch nedorozum\u011bn\u00ed, tady je jednoduch\u00e9 vysv\u011btlen\u00ed, jak budeme \u0159e\u0161it pokoje a pen\u00edze.</p>
+
+      <h3>\ud83d\udecf Pokoje</h3>
+      <p>M\u00e1me:<br>
+      \u2022 7 standardn\u00edch pokoj\u016f \u2013 ka\u017ed\u00fd s man\u017eelskou postel\u00ed (pro 2 osoby)<br>
+      \u2022 1 d\u011btsk\u00fd pokoj \u2013 2 palandy (4 samostatn\u00e1 l\u016f\u017eka)</p>
+      <p>Standardn\u00ed pokoje jsou hlavn\u011b pro p\u00e1ry.<br>
+      D\u011btsk\u00fd pokoj je ide\u00e1ln\u00ed pro jednotlivce nebo kamar\u00e1dy.</p>
+
+      <h3>\ud83d\udc64 Kdy\u017e jede n\u011bkdo s\u00e1m</h3>
+      <p>Pokud jede\u0161 single:<br>
+      \u2022 m\u016f\u017ee\u0161 se domluvit s n\u011bk\u00fdm dal\u0161\u00edm a sd\u00edlet standardn\u00ed pokoj,<br>
+      \u2022 nebo m\u016f\u017ee\u0161 b\u00fdt v d\u011btsk\u00e9m pokoji.</p>
+      <p>Nechceme, aby byly dva standardn\u00ed pokoje obsazen\u00e9 po jednom \u010dlov\u011bku, kdy\u017e se ti dva lid\u00e9 m\u016f\u017eou d\u00e1t dohromady.<br>
+      C\u00edlem je vyu\u017e\u00edt pokoje rozumn\u011b.</p>
+
+      <h3>\ud83d\udc91 P\u00e1ry maj\u00ed p\u0159ednost</h3>
+      <p>Proto\u017ee standardn\u00ed pokoje maj\u00ed man\u017eelsk\u00e9 postele a v\u00edc soukrom\u00ed, tak pokud bude v\u00edc p\u00e1r\u016f, maj\u00ed p\u0159ednost ve standardn\u00edch pokoj\u00edch.</p>
+      <p>Kdy\u017e bude n\u011bkdo s\u00e1m ve standardn\u00edm pokoji a objev\u00ed se p\u00e1r, m\u016f\u017ee b\u00fdt p\u0159esunut do d\u011btsk\u00e9ho pokoje \u2014 pokud si mezit\u00edm nenajde spolubydl\u00edc\u00edho.<br>
+      Nic osobn\u00edho \u2013 jde jen o f\u00e9rov\u00e9 rozd\u011blen\u00ed.</p>
+
+      <h3>\ud83d\udd04 Rozd\u011blen\u00ed se m\u016f\u017ee upravit</h3>
+      <p>Zapisov\u00e1n\u00ed do pokoj\u016f ber jako orienta\u010dn\u00ed. Pokud se po\u010det lid\u00ed zm\u011bn\u00ed, m\u016f\u017eeme pokoje je\u0161t\u011b p\u0159eskl\u00e1dat tak, aby to d\u00e1valo smysl v\u0161em.<br>
+      Kone\u010dn\u00e9 rozd\u011blen\u00ed potvrd\u00edme a\u017e podle fin\u00e1ln\u00ed \u00fa\u010dasti.</p>
+
+      <h3>\ud83d\udcb0 Jak se po\u010d\u00edt\u00e1 cena</h3>
+      <p>Cena za osobu se odv\u00edj\u00ed od celkov\u00e9 ceny ubytov\u00e1n\u00ed a po\u010dtu lid\u00ed.<br>
+      \u2022 Do 10 lid\u00ed se cena po\u010d\u00edt\u00e1 jako celkov\u00e1 \u010d\u00e1stka d\u011blen\u00e1 10 (aby nebyla p\u0159ehnan\u011b vysok\u00e1).<br>
+      \u2022 Od 11 lid\u00ed se cena d\u011bl\u00ed skute\u010dn\u00fdm po\u010dtem osob.<br>
+      \u2022 Od 14 lid\u00ed m\u00e1 d\u011btsk\u00fd pokoj slevu 25 %.</p>
+      <p><b>\u010c\u00edm v\u00edc n\u00e1s pojede, t\u00edm ni\u017e\u0161\u00ed cena vyjde.</b></p>
+      <p>V aplikaci v\u017edy vid\u00ed\u0161:<br>
+      \u2022 kolik m\u00e1\u0161 platit,<br>
+      \u2022 kolik u\u017e jsi zaplatil,<br>
+      \u2022 p\u0159\u00edpadn\u00fd nedoplatek nebo p\u0159eplatek.</p>
+
+      <h3>\ud83c\udfe6 Platby a vratky</h3>
+      <p>Ka\u017ed\u00fd m\u00e1 p\u0159ehled:<br>
+      \u2022 \u201eM\u00e1 platit\u201c = tvoje aktu\u00e1ln\u00ed \u010d\u00e1stka<br>
+      \u2022 \u201eZaplaceno\u201c = co u\u017e jsi poslal<br>
+      \u2022 Pokud vznikne p\u0159eplatek, vy\u0159e\u0161\u00ed se vratka.</p>
+      <p>QR k\u00f3d ti umo\u017en\u00ed zaplatit rovnou spr\u00e1vnou \u010d\u00e1stku.</p>
+
+      <h3>\ud83e\udd1d Shrnut\u00ed</h3>
+      <p>Nejde o p\u0159\u00edsn\u00e1 pravidla, ale o to, aby:<br>
+      \u2022 m\u011bli p\u00e1ry soukrom\u00ed,<br>
+      \u2022 pokoje byly vyu\u017eit\u00e9 rozumn\u011b,<br>
+      \u2022 cena byla f\u00e9rov\u00e1,<br>
+      \u2022 a nikdo nem\u011bl pocit, \u017ee na n\u011bj n\u011bco zbylo.</p>
+      <p>V\u0161echno je o domluv\u011b a pohod\u011b \u2764\ufe0f</p>
+    </div>
+
+    <h3 style="margin-bottom:8px;">Cenov\u00fd p\u0159ehled podle po\u010dtu lid\u00ed</h3>
+    <div style="overflow-x:auto;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Po\u010det lid\u00ed</th>
+            <th>Cena / osoba</th>
+            <th>D\u011btsk\u00fd pokoj</th>
+            <th>Pozn\u00e1mka</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+  `;
 }
 
 // -------- render: rooms (with estimates for empty slots) --------
@@ -663,6 +723,7 @@ function initSlider() {
     }
 
     renderWhoGoes(data);
+    renderPriceScale(data);
     renderRooms(data);
     renderFinance(data);
     ensureAirHousingLayout();
