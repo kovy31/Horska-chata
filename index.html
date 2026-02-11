@@ -4,39 +4,46 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dovolená – ubytování & finance</title>
-  <link rel="stylesheet" href="./assets/style.css?v=20260211-2" />
+  <link rel="stylesheet" href="./assets/style.css?v=20260211-3" />
 </head>
 <body>
   <div class="container">
 
     <div class="header">
       <div>
-        <h1>Dovolená – ubytování & finance</h1>
-        <div class="sub">Přehled kdo jede, pokoje a platby.</div>
+        <h1>Dovolená – ubytování</h1>
+        <div class="sub">Přehled pokojů, kdo jede a platby.</div>
       </div>
     </div>
 
+    <!-- Airbnb card -->
     <div class="airWrap">
       <a class="airCard" href="https://www.airbnb.cz/rooms/1509296019313360437" target="_blank" rel="noreferrer">
         <div class="airImgWrap">
           <img id="airSlideImg" class="airImg"
             src="https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3cc519a7-fdd2-44a7-a44a-870c4d051530.jpeg?im_w=1200"
             alt="Black Diamond – Chalet Raven" loading="lazy" />
+
           <div class="airPill">Guest favorite</div>
           <div class="airHeart" aria-hidden="true">♡</div>
+
           <div class="airBadges">
             <span class="airBadge">📅 12.–18. 7. 2026</span>
             <span class="airBadge">💰 114 938 Kč</span>
           </div>
+
           <div class="airDots" id="airDots" aria-hidden="true"></div>
         </div>
+
         <div class="airBody">
           <div class="airTopRow">
-            <div class="airTitle">Chalet in Tignes</div>
+            <div class="airTitle">Black Diamond – Chalet Raven</div>
             <div class="airRating">★ 5.0 <span class="airReviews">(2)</span></div>
           </div>
-          <div class="airSub">Black Diamond – Chalet Raven</div>
-          <div class="airSub">7× manželský pokoj + 1× dětský pokoj (4 osoby)</div>
+
+          <div class="airSub">Chalet in Tignes</div>
+          <div class="airSub">7× pokoj s manželskou postelí + 1× pokoj s nižším komfortem (4 osoby)</div>
+
           <div class="airPriceRow">
             <span class="airPrice">114 938 Kč</span>
             <span class="airMuted">· 6 nocí (12.–18. 7. 2026)</span>
@@ -45,6 +52,7 @@
       </a>
     </div>
 
+    <!-- Who goes -->
     <section class="section">
       <div class="sectionHead">
         <div>
@@ -56,17 +64,19 @@
       <div class="chips" id="whoChips"></div>
     </section>
 
+    <!-- Rooms -->
     <section class="section">
       <div class="sectionHead">
         <div>
           <div class="sectionTitle">Rozdělení pokojů</div>
-          <div class="sectionSub">Chata se rezervuje od 10 osob. Pokud je vás méně, všichni platí stejně (celkem / 10).</div>
+          <div class="sectionSub">U volných míst se ukazuje odhad ceny pro dalšího příchozího podle pořadí obsazování pokojů.</div>
         </div>
         <div class="statPill" id="capStat">—</div>
       </div>
       <div class="grid" id="roomsGrid"></div>
     </section>
 
+    <!-- Finance -->
     <section class="section">
       <details class="details" open>
         <summary class="summary">
@@ -86,18 +96,11 @@
           </div>
         </div>
 
-        <div class="kpi">
+        <!-- KPI: bez ceny za plnou/dětskou osobu -->
+        <div class="kpi kpi4">
           <div class="item">
             <div class="label">Celková cena</div>
             <div class="value" id="kpiTotal">—</div>
-          </div>
-          <div class="item">
-            <div class="label">Cena za 1 plnou osobu</div>
-            <div class="value" id="kpiUnitFull">—</div>
-          </div>
-          <div class="item">
-            <div class="label">Cena za dětskou osobu (−25 %)</div>
-            <div class="value" id="kpiUnitKid">—</div>
           </div>
           <div class="item">
             <div class="label">Celkem zaplaceno</div>
@@ -171,8 +174,7 @@
       </div>
 
       <div class="btnRow" style="margin-top:12px;">
-        <button class="btn" id="qrDownload" type="button">Uložit PNG</button>
-        <button class="btn primary" id="qrCopy" type="button">Zkopírovat SPD</button>
+        <button class="btn primary" id="qrDownload" type="button">Uložit PNG</button>
       </div>
 
       <div class="subSmall" style="margin-top:10px;">
@@ -181,9 +183,9 @@
     </div>
   </div>
 
-  <script src="./assets/config.js?v=20260211-2"></script>
-  <script src="./assets/common.js?v=20260211-2"></script>
+  <script src="./assets/config.js?v=20260211-3"></script>
+  <script src="./assets/common.js?v=20260211-3"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="./assets/view.js?v=20260211-2"></script>
+  <script src="./assets/view.js?v=20260211-3"></script>
 </body>
 </html>
