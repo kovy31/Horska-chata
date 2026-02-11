@@ -25,7 +25,7 @@ function clampInt(n, min, max) {
 // ---- data model ----
 function defaultData() {
   return {
-    version: 5,
+    version: 6,
     totalCzk: CFG.DEFAULT_TOTAL_CZK,
     paymentAccount: "",
     rooms: [
@@ -38,9 +38,7 @@ function defaultData() {
       { id: "R7", type: "double", name: "Pokoj 7", people: ["", ""] },
       { id: "K1", type: "kids",   name: "Dětský pokoj", people: ["", "", "", ""] }
     ],
-    // ledger keyed by name:
-    // people: { "Jan Novak": { payments:[{amount:1234,date:"2026-02-11"}], refunds:[{amount:500,date:"2026-03-01"}] } }
-    people: {}
+    people: {} // { name: { payments:[{amount,date}], refunds:[{amount,date}] } }
   };
 }
 
@@ -110,7 +108,6 @@ function sanitizeEntryList(list) {
     .filter(x => x.amount > 0);
 }
 
-// Backward compatibility for older models:
 function migrateOldPayments(data, out) {
   // v3: payments[name]={paidCzk,isPaid}
   if (data?.payments && typeof data.payments === "object") {
@@ -147,7 +144,6 @@ function sanitizeData(data) {
     }
   }
 
-  // people ledger
   if (data.people && typeof data.people === "object") {
     d.people = {};
     for (const [nameRaw, rec] of Object.entries(data.people)) {
@@ -158,12 +154,9 @@ function sanitizeData(data) {
         refunds: sanitizeEntryList(rec?.refunds),
       };
     }
-  } else {
-    d.people = {};
   }
 
   migrateOldPayments(data, d);
-
   return d;
 }
 
@@ -193,13 +186,8 @@ async function saveDataToGitHub(data, token) {
   });
 }
 
-// ---- Participants ordering & weights ----
-// Rule:
-// - first 14 people (in order) are FULL weight 1.00 (no discount)
-// - people 15+ are KID weight 0.75 (discount 25%)
-// - divisor = max(10, fullCount + 0.75*kidCount)
+// ---- participants order ----
 function listParticipantsInOrder(data) {
-  // order: all doubles R1..R7 then kids room K1 (already that order in data.rooms)
   const ordered = [];
   for (const room of data.rooms) {
     for (const pRaw of room.people) {
@@ -208,7 +196,6 @@ function listParticipantsInOrder(data) {
       ordered.push({ name, roomId: room.id, roomName: room.name });
     }
   }
-  // keep first occurrence of a name only (avoid duplicates)
   const seen = new Set();
   const uniq = [];
   for (const x of ordered) {
@@ -219,47 +206,56 @@ function listParticipantsInOrder(data) {
   return uniq;
 }
 
+// ---- core pricing rule ----
+// - first 14 people (in order) are FULL (weight 1.00)
+// - people 15+ are KID (weight 0.75)
+// - divisor = max(10, fullCount + 0.75*kidCount)
+//
+// IMPORTANT FIX:
+// If participants < 10, we DO NOT force-sum to totalCzk by "dumping" difference into last person.
+// Instead: everyone pays the same (rounded) unit, and "missing amount" stays as remaining need.
 function computeDueSplit(data) {
   const people = listParticipantsInOrder(data);
-  const n = people.length;
 
-  // mark weights
-  const rows = people.map((p, idx) => {
-    const isKid = idx >= 14; // 15th+ person
+  const rows0 = people.map((p, idx) => {
+    const isKid = idx >= 14;
     const weight = isKid ? 0.75 : 1.0;
     return { ...p, idx, weight, isKid };
   });
 
-  const fullCount = rows.filter(r => !r.isKid).length;
-  const kidCount = rows.filter(r => r.isKid).length;
+  const fullCount = rows0.filter(r => !r.isKid).length;
+  const kidCount = rows0.filter(r => r.isKid).length;
 
-  const divisor = Math.max(10, fullCount + 0.75 * kidCount);
-  if (rows.length === 0) {
-    return { divisor, unitFull: 0, unitKid: 0, rows: [], totalDue: 0 };
+  const weightedCount = fullCount + 0.75 * kidCount;
+  const divisor = Math.max(10, weightedCount);
+
+  if (rows0.length === 0) {
+    return { divisor, unitFull: 0, unitKid: 0, rows: [], totalAssigned: 0, missingBecauseNotEnoughPeople: data.totalCzk };
   }
 
   const unitFull = data.totalCzk / divisor;
   const unitKid = unitFull * 0.75;
 
-  // round per person, then fix last person to match exactly totalCzk
-  const dueRows = rows.map(r => {
-    const raw = unitFull * r.weight;
-    return { ...r, due: Math.round(raw) };
-  });
+  const rows = rows0.map(r => ({
+    ...r,
+    due: Math.round(unitFull * r.weight)
+  }));
 
-  const sum = dueRows.reduce((a, r) => a + r.due, 0);
-  const diff = Math.round(data.totalCzk - sum);
-  if (diff !== 0) dueRows[dueRows.length - 1].due += diff;
+  const totalAssigned = rows.reduce((a, r) => a + r.due, 0);
 
-  const totalDue = dueRows.reduce((a, r) => a + r.due, 0);
+  // Only when divisor == weightedCount (meaning we have >=10 in weighted sense) we fix rounding to match total.
+  // When divisor is forced to 10 (not enough people), we do NOT fix.
+  const forcedMinTen = weightedCount < 10;
 
-  return {
-    divisor,
-    unitFull,
-    unitKid,
-    rows: dueRows,
-    totalDue
-  };
+  if (!forcedMinTen) {
+    const diff = Math.round(data.totalCzk - totalAssigned);
+    if (diff !== 0) rows[rows.length - 1].due += diff;
+  }
+
+  const assigned2 = rows.reduce((a, r) => a + r.due, 0);
+  const missingBecauseNotEnoughPeople = forcedMinTen ? Math.max(0, data.totalCzk - assigned2) : 0;
+
+  return { divisor, unitFull, unitKid, rows, totalAssigned: assigned2, missingBecauseNotEnoughPeople };
 }
 
 function sumEntries(list) {
@@ -273,22 +269,24 @@ function ensurePersonRecord(data, name) {
   return data.people[name];
 }
 
-// ---- Finance ledger with suggested refunds (rule: refund only if person paid & only if surplus exists) ----
+// ---- Ledger ----
 function computeFinanceLedger(data) {
   const split = computeDueSplit(data);
+
+  const names = split.rows.map(r => r.name);
   const dueByName = new Map(split.rows.map(r => [r.name, r.due]));
   const roomByName = new Map(split.rows.map(r => [r.name, r.roomName]));
   const isKidByName = new Map(split.rows.map(r => [r.name, r.isKid]));
 
-  const names = split.rows.map(r => r.name);
-
-  // totals paid/refunded per person
-  const personRows = names.map(name => {
+  const rows = names.map(name => {
     const rec = data.people?.[name] || { payments: [], refunds: [] };
     const paid = sumEntries(rec.payments);
     const refunded = sumEntries(rec.refunds);
     const netPaid = paid - refunded;
     const due = dueByName.get(name) || 0;
+
+    const over = Math.max(0, netPaid - due);
+    const under = Math.max(0, due - netPaid);
 
     return {
       name,
@@ -298,62 +296,20 @@ function computeFinanceLedger(data) {
       paid,
       refunded,
       netPaid,
-      // provisional:
-      remainingToPay: Math.max(0, due - netPaid),
-      overpay: Math.max(0, netPaid - due),
+      overpay: over,
+      underpay: under,
       payments: rec.payments || [],
-      refunds: rec.refunds || []
+      refunds: rec.refunds || [],
     };
   });
 
-  const totalPaid = personRows.reduce((a, r) => a + r.paid, 0);
-  const totalRefunded = personRows.reduce((a, r) => a + r.refunded, 0);
+  const totalPaid = rows.reduce((a, r) => a + r.paid, 0);
+  const totalRefunded = rows.reduce((a, r) => a + r.refunded, 0);
   const cashOnHand = totalPaid - totalRefunded;
+
+  // Need/surplus always compared to real totalCzk
   const surplus = Math.max(0, cashOnHand - data.totalCzk);
   const need = Math.max(0, data.totalCzk - cashOnHand);
-
-  // suggested refunds:
-  // only among people who already paid (paid>0) and have overpay>0
-  const candidates = personRows.filter(r => r.paid > 0 && r.overpay > 0);
-  const totalOverpay = candidates.reduce((a, r) => a + r.overpay, 0);
-
-  const suggestions = new Map();
-  if (surplus > 0 && totalOverpay > 0) {
-    // proportional allocation, then rounding fix
-    let allocated = 0;
-    for (const r of candidates) {
-      const share = surplus * (r.overpay / totalOverpay);
-      const sug = Math.min(r.overpay, Math.floor(share + 0.5));
-      suggestions.set(r.name, sug);
-      allocated += sug;
-    }
-    // fix rounding difference by adjusting largest overpay first
-    let diff = surplus - allocated;
-    if (diff !== 0) {
-      const sorted = [...candidates].sort((a, b) => b.overpay - a.overpay);
-      let i = 0;
-      while (diff !== 0 && sorted.length) {
-        const n = sorted[i % sorted.length].name;
-        const cur = suggestions.get(n) || 0;
-        const cap = (candidates.find(x => x.name === n)?.overpay || 0);
-        if (diff > 0 && cur < cap) { suggestions.set(n, cur + 1); diff--; }
-        else if (diff < 0 && cur > 0) { suggestions.set(n, cur - 1); diff++; }
-        i++;
-        if (i > 100000) break;
-      }
-    }
-  }
-
-  // attach suggestedRefund and updated view of "balance" text
-  const rows = personRows.map(r => {
-    const suggestedRefund = suggestions.get(r.name) || 0;
-    const balanceText =
-      r.remainingToPay > 0 ? `Doplatit ${formatCzk(r.remainingToPay)}`
-      : (suggestedRefund > 0 ? `Vrátit ${formatCzk(suggestedRefund)}`
-      : "Srovnáno");
-
-    return { ...r, suggestedRefund, balanceText };
-  });
 
   return {
     split,
