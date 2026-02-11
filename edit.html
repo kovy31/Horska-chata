@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Editace – obsazení & platby</title>
-  <link rel="stylesheet" href="./assets/style.css?v=20260210-6" />
+  <title>Editace – pokoje, platby, vratky</title>
+  <link rel="stylesheet" href="./assets/style.css?v=20260211-1" />
 </head>
 <body>
   <div class="container">
     <div class="headerRow">
       <div>
         <h1>Editace</h1>
-        <div class="sub">Obsazení pokojů + evidence plateb (jen lidé zapsaní v pokojích).</div>
+        <div class="sub">Zapsaní lidé v pokojích = potvrzení účastníci. Platby a vratky eviduješ jako historii (částka + datum).</div>
       </div>
       <div class="sub"><a href="./index.html">← Zobrazení</a></div>
     </div>
@@ -24,21 +24,15 @@
         </div>
 
         <div>
-          <label class="label">Dětský pokoj</label>
-          <div class="subSmall">Sleva 25 % (koeficient 0.75)</div>
-          <input id="inpKids" type="number" min="0.1" max="1" step="0.01" />
-        </div>
-
-        <div>
-          <label class="label">Číslo účtu (pro platby)</label>
+          <label class="label">Číslo účtu</label>
           <input id="inpAccount" type="text" placeholder="např. 123456789/0100" />
-          <div class="subSmall">Ukládá se do GitHubu a zobrazuje se v sekci Finance.</div>
+          <div class="subSmall">Zobrazuje se ve financích na hlavní stránce.</div>
         </div>
 
         <div>
           <label class="label">GitHub token (pro uložení)</label>
           <input id="inpToken" type="password" placeholder="Fine-grained PAT (Issues: Read/Write)" />
-          <div class="subSmall">Token se nikam nezapisuje do repa. Slouží jen pro PATCH do Issue.</div>
+          <div class="subSmall">Token se nikam neukládá do repa. Slouží jen pro PATCH do Issue.</div>
         </div>
       </div>
 
@@ -51,13 +45,13 @@
     <div class="twoCol">
       <div>
         <h2 class="h2">Pokoje</h2>
-        <div class="sub">Zapsaní lidé = potvrzení účastníci.</div>
+        <div class="sub">Prvních 14 osob bez slevy. Osoby 15+ (v dětském pokoji) mají slevu 25 %.</div>
         <div class="grid" id="editGrid"></div>
       </div>
 
       <div>
-        <h2 class="h2">Platby</h2>
-        <div class="sub">Zde zapisuješ, kdo kolik poslal. Systém ukáže doplatek / přeplatek (vratku).</div>
+        <h2 class="h2">Finance – správa plateb a vratek</h2>
+        <div class="sub">Klikni na jméno a uprav platby / vratky. Datum lze ručně měnit.</div>
 
         <div class="kpi smallKpi">
           <div class="item">
@@ -65,44 +59,75 @@
             <div class="value" id="kpiPaid">—</div>
           </div>
           <div class="item">
-            <div class="label">Chybí vybrat</div>
-            <div class="value" id="kpiNeed">—</div>
+            <div class="label">Celkem vráceno</div>
+            <div class="value" id="kpiRefunded">—</div>
           </div>
           <div class="item">
-            <div class="label">Vrátit celkem</div>
-            <div class="value" id="kpiRefund">—</div>
+            <div class="label">Přebytek (k vrácení)</div>
+            <div class="value" id="kpiSurplus">—</div>
           </div>
         </div>
 
         <div class="tableWrap">
           <div class="desktopTable" style="display:block;">
-            <table class="table" id="payEditTable">
+            <table class="table" id="adminTable">
               <thead>
                 <tr>
                   <th>Jméno</th>
-                  <th>Pokoj</th>
                   <th>Má platit</th>
                   <th>Zaplaceno</th>
+                  <th>Vráceno</th>
                   <th>Stav</th>
                 </tr>
               </thead>
               <tbody></tbody>
             </table>
           </div>
-          <div class="subSmall" id="payEmpty" style="display:none; margin-top:10px;">
+          <div class="subSmall" id="adminEmpty" style="display:none; margin-top:10px;">
             Zatím nikdo není zapsaný v pokojích.
           </div>
         </div>
+
+        <div class="panel" style="margin-top:12px;">
+          <div class="sub" style="margin-top:0;">
+            <strong id="selTitle">Vyber člověka v tabulce výše…</strong>
+          </div>
+
+          <div id="selMeta" class="subSmall" style="margin-top:6px;"></div>
+
+          <div class="threeCol" style="margin-top:10px;">
+            <div class="miniCard">
+              <div class="label">Platby</div>
+              <div id="payListAdmin"></div>
+              <button class="btn tiny" id="btnAddPay" type="button" disabled>+ Přidat platbu</button>
+            </div>
+
+            <div class="miniCard">
+              <div class="label">Vratky</div>
+              <div id="refundListAdmin"></div>
+              <button class="btn tiny" id="btnAddRefund" type="button" disabled>+ Přidat vratku</button>
+            </div>
+
+            <div class="miniCard">
+              <div class="label">Návrh vrácení</div>
+              <div class="subSmall">Automaticky: vrací se jen těm, kdo už zaplatili.</div>
+              <div class="bigNumber" id="suggestRefund">—</div>
+              <div class="subSmall" id="suggestHint"></div>
+            </div>
+          </div>
+
+          <div class="subSmall" style="margin-top:10px;">
+            Tip: datum piš ve formátu YYYY-MM-DD (např. 2026-02-11).
+          </div>
+        </div>
+
       </div>
     </div>
 
-    <div class="footer subSmall">
-      Tip: Zaškrtni „Zaplaceno“ → automaticky se vyplní částka „má platit“, pak jen ulož.
-    </div>
   </div>
 
-  <script src="./assets/config.js?v=20260210-6"></script>
-  <script src="./assets/common.js?v=20260210-6"></script>
-  <script src="./assets/edit.js?v=20260210-6"></script>
+  <script src="./assets/config.js?v=20260211-1"></script>
+  <script src="./assets/common.js?v=20260211-1"></script>
+  <script src="./assets/edit.js?v=20260211-1"></script>
 </body>
 </html>
