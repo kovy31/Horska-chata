@@ -17,11 +17,61 @@ function todayISO() {
   return `${y}-${m}-${day}`;
 }
 
+// ---- pricing helpers (shared by view + edit) ----
+function countPeopleByType(rooms) {
+  let total = 0;
+  let kids = 0;
+  for (const r of rooms || []) {
+    const isKidsRoom = r.type === "kids";
+    for (const p of (r.people || [])) {
+      const n = normalizeName(p);
+      if (!n) continue;
+      total++;
+      if (isKidsRoom) kids++;
+    }
+  }
+  return { total, kids, adults: Math.max(0, total - kids) };
+}
+
+/**
+ * Pricing rules:
+ * - If n <= 10: everyone share = total/10 (minimum)
+ * - If 11 <= n <= 13: everyone share = total/n
+ * - If n >= 14: kids share = 0.75 * standardShare, adults share = 1.0 * standardShare
+ *   where standardShare = total / (adults + 0.75*kids)
+ */
+function computeShares(totalCzk, nAdults, nKids) {
+  const total = Math.round(Number(totalCzk) || 0);
+  const n = Math.max(0, nAdults + nKids);
+
+  // minimum "lákací" cena
+  if (n <= 10) {
+    const per = total / 10;
+    return { mode: "min10", standard: per, kids: per, adults: per };
+  }
+
+  if (n <= 13) {
+    const per = total / n;
+    return { mode: "divide", standard: per, kids: per, adults: per };
+  }
+
+  // >= 14, kids discount 25%
+  const weight = (nAdults + 0.75 * nKids);
+  const std = weight > 0 ? (total / weight) : 0;
+  return { mode: "kids25", standard: std, kids: 0.75 * std, adults: std };
+}
+
+function roundCzk(x) {
+  return Math.round(Number(x) || 0);
+}
+
 // ---- data model ----
 function defaultData() {
   return {
-    version: 7,
+    version: 8,
     airNote: "",
+    banner: "",        // text banneru nad pokoji (např. "Pro rezervaci chaty...")
+    bannerVisible: false, // zobrazit banner na hlavní stránce?
     totalCzk: CFG.DEFAULT_TOTAL_CZK,
     paymentAccount: "",
     rooms: [
