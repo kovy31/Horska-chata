@@ -337,3 +337,4 @@ if (inpAirNote) inpAirNote.value = state.airNote || "";
 renderRoomsEditor(state);
 renderAdminTable();
 renderSelectedPanel();
+
