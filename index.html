@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dovolená – ubytování & obsazení</title>
-  <link rel="stylesheet" href="./assets/style.css?v=20260210-7" />
+  <title>Dovolená – ubytování & finance</title>
+  <link rel="stylesheet" href="./assets/style.css?v=20260211-1" />
 </head>
 <body>
   <div class="container">
 
     <div class="header">
       <div>
-        <h1>Dovolená – ubytování & obsazení</h1>
-        <div class="sub">Přehled kdo jede, rozdělení pokojů a finance.</div>
+        <h1>Dovolená – ubytování & finance</h1>
+        <div class="sub">Přehled kdo jede, pokoje a platby.</div>
       </div>
     </div>
 
@@ -55,7 +55,7 @@
       <div class="sectionHead">
         <div>
           <div class="sectionTitle">Kdo jede</div>
-          <div class="sectionSub">Potvrzení účastníci</div>
+          <div class="sectionSub">Potvrzení účastníci (zapsaní v pokojích)</div>
         </div>
         <div class="statPill" id="whoStat">—</div>
       </div>
@@ -67,6 +67,7 @@
       <div class="sectionHead">
         <div>
           <div class="sectionTitle">Rozdělení pokojů</div>
+          <div class="sectionSub">Prvních 14 osob bez slevy. Osoby 15+ mají dětskou slevu 25 %.</div>
         </div>
         <div class="statPill" id="capStat">—</div>
       </div>
@@ -81,15 +82,22 @@
           <span class="summaryHint">rozbalit / sbalit</span>
         </summary>
 
-        <div class="payBox" id="payBox">
-          <div class="payBoxTitle">Kam poslat platbu</div>
+        <div class="payBox">
+          <div class="payBoxTitle">Platba</div>
           <div class="payBoxRow">
             <div class="payBoxLabel">Číslo účtu</div>
             <div class="payBoxValue mono" id="payAccount">—</div>
           </div>
           <div class="payBoxRow">
             <div class="payBoxLabel">Poznámka</div>
-            <div class="payBoxValue">Do poznámky napiš jméno a příjmení za koho platíš.</div>
+            <div class="payBoxValue">Do poznámky napiš jen svoje jméno (např. „Jan Novák“).</div>
+          </div>
+          <div class="payBoxRow">
+            <div class="payBoxLabel">Pravidlo</div>
+            <div class="payBoxValue">
+              Chata se rezervuje od <strong>10 osob</strong>. Cena se přepočítává podle počtu účastníků a dětské slevy.
+              Pokud se přidají další lidé, systém ukáže komu a kolik se má vrátit.
+            </div>
           </div>
         </div>
 
@@ -99,8 +107,12 @@
             <div class="value" id="kpiTotal">—</div>
           </div>
           <div class="item">
-            <div class="label">Cena za osobu</div>
-            <div class="value" id="kpiUnit">—</div>
+            <div class="label">Cena za 1 plnou osobu</div>
+            <div class="value" id="kpiUnitFull">—</div>
+          </div>
+          <div class="item">
+            <div class="label">Cena za dětskou osobu (−25 %)</div>
+            <div class="value" id="kpiUnitKid">—</div>
           </div>
           <div class="item">
             <div class="label">Celkem zaplaceno</div>
@@ -111,17 +123,13 @@
             <div class="value" id="kpiNeed">—</div>
           </div>
           <div class="item">
-            <div class="label">Vrátit celkem</div>
-            <div class="value" id="kpiRefund">—</div>
-          </div>
-          <div class="item">
-            <div class="label">Součet plateb</div>
-            <div class="value" id="kpiSum">—</div>
+            <div class="label">Přebytek (k vrácení)</div>
+            <div class="value" id="kpiSurplus">—</div>
           </div>
         </div>
 
         <div class="tableWrap">
-          <h2 style="margin:14px 0 6px 0; font-size:16px;">Kdo kolik zaplatil a vyrovnání</h2>
+          <h2 style="margin:14px 0 6px 0; font-size:16px;">Přehled plate_toggle – kdo kolik zaplatil a vyrovnání</h2>
 
           <div class="desktopTable">
             <table class="table" id="payTable">
@@ -131,7 +139,7 @@
                   <th>Pokoj</th>
                   <th>Má platit</th>
                   <th>Zaplaceno</th>
-                  <th>Stav</th>
+                  <th>Vyrovnání</th>
                   <th>QR</th>
                 </tr>
               </thead>
@@ -141,9 +149,45 @@
 
           <div class="mobileList" id="payList"></div>
         </div>
+
+        <div class="tableWrap" style="margin-top:14px;">
+          <h2 style="margin:0 0 6px 0; font-size:16px;">Návrh vratek (automaticky)</h2>
+          <div class="subSmall">Vrací se jen těm, kdo už zaplatili. Částky jsou návrh – skutečné vratky eviduješ v Edit stránce.</div>
+          <div class="desktopTable" style="display:block;">
+            <table class="table" id="refundTable">
+              <thead>
+                <tr>
+                  <th>Jméno</th>
+                  <th>Navržená vratka</th>
+                  <th>Už vráceno</th>
+                  <th>Zbývá vrátit</th>
+                  <th>Detail</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="subSmall" id="refundEmpty" style="margin-top:10px; display:none;">Zatím není co vracet.</div>
+        </div>
+
       </details>
     </section>
 
+  </div>
+
+  <!-- Info modal (payments/refunds list) -->
+  <div class="modal" id="infoModal" aria-hidden="true">
+    <div class="modalBackdrop" data-close="1"></div>
+    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+      <div class="modalHead">
+        <div>
+          <div class="modalTitle" id="infoTitle">Detail</div>
+          <div class="modalSub" id="infoSub">—</div>
+        </div>
+        <button class="iconBtn" id="infoClose" type="button" aria-label="Zavřít">✕</button>
+      </div>
+      <div id="infoBody" class="infoBody"></div>
+    </div>
   </div>
 
   <!-- QR Modal -->
@@ -168,17 +212,17 @@
       </div>
 
       <div class="subSmall" style="margin-top:10px;">
-        Po načtení QR v bankovní aplikaci se předvyplní částka + zpráva (jen jméno).
+        Načti QR v bankovní aplikaci. Poznámka = jen jméno.
       </div>
     </div>
   </div>
 
-  <script src="./assets/config.js?v=20260210-7"></script>
-  <script src="./assets/common.js?v=20260210-7"></script>
+  <script src="./assets/config.js?v=20260211-1"></script>
+  <script src="./assets/common.js?v=20260211-1"></script>
 
-  <!-- QRCode library (no bank / no API, only generation in browser) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-IwR8nQnPzCq+z4bG5F5t6YqKJbH9Xl+7b6+5+g1Ttq6lq8Q0Qm0G6p3t9d2mYx8o2pYk2QxG0dH8qg9mJw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- QRCode lib -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-  <script src="./assets/view.js?v=20260210-7"></script>
+  <script src="./assets/view.js?v=20260211-1"></script>
 </body>
 </html>
