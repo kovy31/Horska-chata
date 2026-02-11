@@ -1,232 +1,108 @@
-// assets/edit.js
-const editGrid = document.getElementById("editGrid");
-const btnLoad = document.getElementById("btnLoad");
-const btnSave = document.getElementById("btnSave");
-
-const inpTotal = document.getElementById("inpTotal");
-const inpKids = document.getElementById("inpKids");
-const inpAccount = document.getElementById("inpAccount");
-const inpToken = document.getElementById("inpToken");
-
-const payEditBody = document.querySelector("#payEditTable tbody");
-const payEmpty = document.getElementById("payEmpty");
-
-const kpiPaid = document.getElementById("kpiPaid");
-const kpiNeed = document.getElementById("kpiNeed");
-const kpiRefund = document.getElementById("kpiRefund");
-
-let state = defaultData();
-
-function ensurePaymentRecord(name) {
-  if (!state.payments) state.payments = {};
-  if (!state.payments[name]) state.payments[name] = { paidCzk: 0, isPaid: false };
-}
-
-function migratePaymentRecord(oldName, newName) {
-  oldName = normalizeName(oldName);
-  newName = normalizeName(newName);
-  if (!oldName || !newName || oldName === newName) return;
-  if (!state.payments) state.payments = {};
-
-  if (state.payments[oldName]) {
-    if (!state.payments[newName]) {
-      state.payments[newName] = state.payments[oldName];
-    }
-    delete state.payments[oldName];
-  }
-}
-
-function renderRoomsEditor(data) {
-  editGrid.innerHTML = "";
-
-  for (const room of data.rooms) {
-    const card = document.createElement("div");
-    card.className = "card";
-
-    const fields = room.people.map((val, idx) => {
-      return `
-        <div class="fieldRow">
-          <label class="label">${idx + 1}. osoba</label>
-          <input data-room="${room.id}" data-idx="${idx}" value="${(val || "").replace(/"/g,'&quot;')}" placeholder="Jméno" />
-        </div>
-      `;
-    }).join("");
-
-    const isKids = room.type === "kids";
-    card.innerHTML = `
-      <div class="roomHead">
-        <div>
-          <h2>${room.name}</h2>
-          <div class="subSmall">${isKids ? "Dětský pokoj · sleva 25 %" : "Pokoj s manželskou postelí"}</div>
-        </div>
-        <div class="subSmall">${room.people.length} místa</div>
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Editace – obsazení & platby</title>
+  <link rel="stylesheet" href="./assets/style.css?v=20260210-6" />
+</head>
+<body>
+  <div class="container">
+    <div class="headerRow">
+      <div>
+        <h1>Editace</h1>
+        <div class="sub">Obsazení pokojů + evidence plateb (jen lidé zapsaní v pokojích).</div>
       </div>
-      ${fields}
-    `;
+      <div class="sub"><a href="./index.html">← Zobrazení</a></div>
+    </div>
 
-    editGrid.appendChild(card);
-  }
-
-  editGrid.querySelectorAll("input[data-room]").forEach(inp => {
-    inp.addEventListener("focus", (e) => {
-      e.target.dataset.prev = e.target.value;
-    });
-
-    inp.addEventListener("input", (e) => {
-      const roomId = e.target.getAttribute("data-room");
-      const idx = Number(e.target.getAttribute("data-idx"));
-      const room = state.rooms.find(r => r.id === roomId);
-
-      const prev = e.target.dataset.prev || "";
-      const next = normalizeName(e.target.value);
-
-      room.people[idx] = next;
-      migratePaymentRecord(prev, next);
-      e.target.dataset.prev = next;
-
-      renderPaymentsPanel();
-    });
-  });
-}
-
-function renderPaymentsPanel() {
-  const total = Number(inpTotal.value);
-  const kids = Number(inpKids.value);
-
-  if (Number.isFinite(total) && total > 0) state.totalCzk = Math.round(total);
-  if (Number.isFinite(kids) && kids > 0 && kids <= 1) state.kidsDiscount = kids;
-
-  state.paymentAccount = (inpAccount.value || "").trim();
-
-  const ledger = computeFinanceLedger(state);
-
-  kpiPaid.textContent = formatCzk(ledger.totalPaid);
-  kpiNeed.textContent = formatCzk(ledger.remainingToCollect);
-  kpiRefund.textContent = formatCzk(ledger.refundTotal);
-
-  payEditBody.innerHTML = "";
-
-  if (ledger.rows.length === 0) {
-    payEmpty.style.display = "block";
-    return;
-  }
-  payEmpty.style.display = "none";
-
-  for (const r of ledger.rows) {
-    ensurePaymentRecord(r.name);
-
-    const tr = document.createElement("tr");
-
-    const statusText = r.refund > 0
-      ? `Vrátit ${formatCzk(r.refund)}`
-      : r.remaining > 0
-        ? `Doplatit ${formatCzk(r.remaining)}`
-        : "Srovnáno";
-
-    tr.innerHTML = `
-      <td><strong>${r.name}</strong></td>
-      <td>${r.roomName}${r.isKids ? " · sleva 25 %" : ""}</td>
-      <td><strong>${formatCzk(r.due)}</strong></td>
-      <td>
-        <div class="paidCell">
-          <label class="chk">
-            <input type="checkbox" data-paidchk="${r.name.replace(/"/g,'&quot;')}" />
-            <span>Zaplaceno</span>
-          </label>
-          <input class="paidInput" type="number" min="0" step="1" data-paidinp="${r.name.replace(/"/g,'&quot;')}" />
+    <div class="panel">
+      <div class="panelGrid">
+        <div>
+          <label class="label">Celková cena (Kč)</label>
+          <input id="inpTotal" type="number" min="1" step="1" />
         </div>
-      </td>
-      <td>${statusText}</td>
-    `;
 
-    payEditBody.appendChild(tr);
+        <div>
+          <label class="label">Dětský pokoj</label>
+          <div class="subSmall">Sleva 25 % (koeficient 0.75)</div>
+          <input id="inpKids" type="number" min="0.1" max="1" step="0.01" />
+        </div>
 
-    const rec = state.payments[r.name];
-    const chk = tr.querySelector(`input[data-paidchk]`);
-    const inp = tr.querySelector(`input[data-paidinp]`);
+        <div>
+          <label class="label">Číslo účtu (pro platby)</label>
+          <input id="inpAccount" type="text" placeholder="např. 123456789/0100" />
+          <div class="subSmall">Ukládá se do GitHubu a zobrazuje se v sekci Finance.</div>
+        </div>
 
-    chk.checked = Boolean(rec.isPaid);
-    inp.value = String(Math.round(Number(rec.paidCzk) || 0));
+        <div>
+          <label class="label">GitHub token (pro uložení)</label>
+          <input id="inpToken" type="password" placeholder="Fine-grained PAT (Issues: Read/Write)" />
+          <div class="subSmall">Token se nikam nezapisuje do repa. Slouží jen pro PATCH do Issue.</div>
+        </div>
+      </div>
 
-    chk.addEventListener("change", () => {
-      rec.isPaid = chk.checked;
-      if (chk.checked) {
-        rec.paidCzk = r.due;
-        inp.value = String(r.due);
-      }
-      renderPaymentsPanel();
-    });
+      <div class="btnRow">
+        <button class="btn" id="btnLoad">Načíst</button>
+        <button class="btn primary" id="btnSave">Uložit</button>
+      </div>
+    </div>
 
-    inp.addEventListener("input", () => {
-      const v = Number(inp.value);
-      rec.paidCzk = Number.isFinite(v) && v >= 0 ? Math.round(v) : 0;
-      rec.isPaid = rec.paidCzk >= r.due && r.due > 0;
-      renderPaymentsPanel();
-    });
-  }
-}
+    <div class="twoCol">
+      <div>
+        <h2 class="h2">Pokoje</h2>
+        <div class="sub">Zapsaní lidé = potvrzení účastníci.</div>
+        <div class="grid" id="editGrid"></div>
+      </div>
 
-async function loadFromGitHub() {
-  btnLoad.disabled = true;
-  btnLoad.textContent = "Načítám…";
-  try {
-    state = await loadDataFromGitHub();
-    inpTotal.value = String(state.totalCzk);
-    inpKids.value = String(state.kidsDiscount);
-    inpAccount.value = state.paymentAccount || "";
+      <div>
+        <h2 class="h2">Platby</h2>
+        <div class="sub">Zde zapisuješ, kdo kolik poslal. Systém ukáže doplatek / přeplatek (vratku).</div>
 
-    renderRoomsEditor(state);
-    renderPaymentsPanel();
-  } catch (e) {
-    alert("Nepodařilo se načíst:\n" + e.message);
-  } finally {
-    btnLoad.disabled = false;
-    btnLoad.textContent = "Načíst";
-  }
-}
+        <div class="kpi smallKpi">
+          <div class="item">
+            <div class="label">Celkem zaplaceno</div>
+            <div class="value" id="kpiPaid">—</div>
+          </div>
+          <div class="item">
+            <div class="label">Chybí vybrat</div>
+            <div class="value" id="kpiNeed">—</div>
+          </div>
+          <div class="item">
+            <div class="label">Vrátit celkem</div>
+            <div class="value" id="kpiRefund">—</div>
+          </div>
+        </div>
 
-async function saveToGitHub() {
-  const token = (inpToken.value || "").trim();
-  if (!token) return alert("Pro uložení zadej GitHub token.");
+        <div class="tableWrap">
+          <div class="desktopTable" style="display:block;">
+            <table class="table" id="payEditTable">
+              <thead>
+                <tr>
+                  <th>Jméno</th>
+                  <th>Pokoj</th>
+                  <th>Má platit</th>
+                  <th>Zaplaceno</th>
+                  <th>Stav</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="subSmall" id="payEmpty" style="display:none; margin-top:10px;">
+            Zatím nikdo není zapsaný v pokojích.
+          </div>
+        </div>
+      </div>
+    </div>
 
-  const total = Number(inpTotal.value);
-  const kids = Number(inpKids.value);
-  if (!Number.isFinite(total) || total <= 0) return alert("Neplatná celková cena.");
-  if (!Number.isFinite(kids) || kids <= 0 || kids > 1) return alert("Neplatný koeficient dětského pokoje (0–1).");
+    <div class="footer subSmall">
+      Tip: Zaškrtni „Zaplaceno“ → automaticky se vyplní částka „má platit“, pak jen ulož.
+    </div>
+  </div>
 
-  state.totalCzk = Math.round(total);
-  state.kidsDiscount = kids;
-  state.paymentAccount = (inpAccount.value || "").trim();
-
-  // remove payment records for names no longer in rooms
-  const namesNow = new Set();
-  for (const room of state.rooms) for (const p of room.people) {
-    const n = normalizeName(p);
-    if (n) namesNow.add(n);
-  }
-  for (const key of Object.keys(state.payments || {})) {
-    if (!namesNow.has(key)) delete state.payments[key];
-  }
-
-  btnSave.disabled = true;
-  btnSave.textContent = "Ukládám…";
-  try {
-    await saveDataToGitHub(state, token);
-    alert("Uloženo do GitHub Issue.");
-  } catch (e) {
-    alert("Nepodařilo se uložit:\n" + e.message);
-  } finally {
-    btnSave.disabled = false;
-    btnSave.textContent = "Uložit";
-  }
-}
-
-btnLoad.addEventListener("click", loadFromGitHub);
-btnSave.addEventListener("click", saveToGitHub);
-
-// init
-inpTotal.value = String(state.totalCzk);
-inpKids.value = String(state.kidsDiscount);
-inpAccount.value = state.paymentAccount || "";
-renderRoomsEditor(state);
-renderPaymentsPanel();
+  <script src="./assets/config.js?v=20260210-6"></script>
+  <script src="./assets/common.js?v=20260210-6"></script>
+  <script src="./assets/edit.js?v=20260210-6"></script>
+</body>
+</html>
