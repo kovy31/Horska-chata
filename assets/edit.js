@@ -6,6 +6,8 @@ let selectedName = "";
 const inpTotal = document.getElementById("inpTotal");
 const inpAccount = document.getElementById("inpAccount");
 const inpAirNote = document.getElementById("inpAirNote");
+const inpBanner = document.getElementById("inpBanner");
+const inpBannerVisible = document.getElementById("inpBannerVisible");
 const inpToken = document.getElementById("inpToken");
 
 const kpiPaid = document.getElementById("kpiPaid");
@@ -309,6 +311,8 @@ async function loadFromGitHub() {
     inpTotal.value = String(state.totalCzk);
     inpAccount.value = state.paymentAccount || "";
     if (inpAirNote) inpAirNote.value = state.airNote || "";
+    if (inpBanner) inpBanner.value = state.banner || "";
+    if (inpBannerVisible) inpBannerVisible.checked = !!state.bannerVisible;
     selectedName = "";
     renderRoomsEditor(state);
     renderAdminTable();
@@ -331,6 +335,8 @@ async function saveToGitHubNow() {
   state.totalCzk = Math.round(total);
   state.paymentAccount = (inpAccount.value || "").trim();
   state.airNote = (inpAirNote?.value || "").trim();
+  state.banner = (inpBanner?.value || "").trim();
+  state.bannerVisible = inpBannerVisible?.checked || false;
 
   cleanupPeopleNotInRooms();
   for (const name of Object.keys(state.people || {})) {
@@ -357,6 +363,8 @@ btnSave.addEventListener("click", saveToGitHubNow);
 inpTotal.value = String(state.totalCzk);
 inpAccount.value = state.paymentAccount || "";
 if (inpAirNote) inpAirNote.value = state.airNote || "";
+if (inpBanner) inpBanner.value = state.banner || "";
+if (inpBannerVisible) inpBannerVisible.checked = !!state.bannerVisible;
 renderRoomsEditor(state);
 renderAdminTable();
 renderSelectedPanel();
