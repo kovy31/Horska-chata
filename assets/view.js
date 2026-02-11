@@ -235,20 +235,20 @@ function renderRooms(data) {
             <div class="who">${name}</div>
             <div class="meta">potvrzeno${tag}</div>
           </div>
-          <div class="meta">${formatCzk(due)}</div>
+          <div class="price">${formatCzk(due)}</div>
         `;
       } else {
-        futureCounter += 1;
-        const price = priceForFuturePosition(data.totalCzk, futureCounter);
+  futureCounter += 1;
+  const price = priceForFuturePosition(data.totalCzk, futureCounter);
 
-        row.innerHTML = `
-          <div>
-            <div class="who">zatím nikdo</div>
-            <div class="meta">cena ${formatCzk(price)}</div>
-          </div>
-          <div class="meta">—</div>
-        `;
-      }
+  row.innerHTML = `
+    <div>
+      <div class="who">zatím nikdo</div>
+      <div class="meta">odhad ceny pro dalšího</div>
+    </div>
+    <div class="price">${formatCzk(price)}</div>
+  `;
+}
 
       list.appendChild(row);
     }
