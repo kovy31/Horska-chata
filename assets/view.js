@@ -182,6 +182,19 @@ function priceForRoomType(totalCzk, rooms, roomType, addOneToThatSlot) {
   return { shares, price: roundCzk(p), totalPeople: nAdults + nKids };
 }
 
+/**
+ * Returns price for a hypothetical Nth empty slot,
+ * given extra adults/kids already counted before this slot.
+ */
+function priceForNthEmpty(totalCzk, rooms, roomType, extraAdults, extraKids) {
+  const { kids, adults } = countPeopleByType(rooms);
+  const nAdults = adults + extraAdults;
+  const nKids = kids + extraKids;
+  const shares = computeShares(totalCzk, nAdults, nKids);
+  const p = (roomType === "kids") ? shares.kids : shares.adults;
+  return { shares, price: roundCzk(p), totalPeople: nAdults + nKids };
+}
+
 // -------- airNote layout (desktop right / mobile under) --------
 function ensureAirHousingLayout() {
   if (!elAirNote || !elAirWrap) return;
@@ -263,9 +276,39 @@ function renderRooms(data) {
     else { doubleUsed += filled; doubleCap += ppl.length; }
   }
 
-  for (const r of data.rooms || []) {
-    const rType = r.type === "kids" ? "kids" : "adult";
-    const people = (r.people || []).map(x => normalizeName(x));
+  // 1st pass: collect all empty slots in order to assign incremental pricing
+  const currentCounts = countPeopleByType(data.rooms);
+  const emptySlots = []; // { roomIdx, slotIdx, roomType }
+  const roomsNormalized = (data.rooms || []).map(r => ({
+    ...r,
+    rType: r.type === "kids" ? "kids" : "adult",
+    people: (r.people || []).map(x => normalizeName(x)),
+  }));
+
+  for (let ri = 0; ri < roomsNormalized.length; ri++) {
+    const r = roomsNormalized[ri];
+    for (let si = 0; si < r.people.length; si++) {
+      if (!r.people[si]) {
+        emptySlots.push({ roomIdx: ri, slotIdx: si, roomType: r.rType });
+      }
+    }
+  }
+
+  // Pre-compute price for each empty slot position (cumulative)
+  const emptySlotPrices = new Map(); // key: "ri-si" -> { price, shares, totalPeople }
+  let extraAdults = 0, extraKids = 0;
+  for (const slot of emptySlots) {
+    if (slot.roomType === "kids") extraKids++;
+    else extraAdults++;
+    const hypo = priceForNthEmpty(total, data.rooms, slot.roomType, extraAdults, extraKids);
+    emptySlotPrices.set(`${slot.roomIdx}-${slot.slotIdx}`, hypo);
+  }
+
+  // 2nd pass: render room cards
+  for (let ri = 0; ri < roomsNormalized.length; ri++) {
+    const r = roomsNormalized[ri];
+    const origRoom = data.rooms[ri];
+    const people = r.people;
     const roomFilled = people.filter(Boolean).length;
 
     const bedsHtml = people.map((p, i) => {
@@ -273,9 +316,9 @@ function renderRooms(data) {
 
       if (p) {
         // confirmed person -> show current computed price for their room type
-        const cur = priceForRoomType(total, data.rooms, rType, false);
+        const cur = priceForRoomType(total, data.rooms, r.rType, false);
         const priceText = formatCzk(cur.price);
-        const hint = (cur.shares.mode === "kids25" && r.type === "kids")
+        const hint = (cur.shares.mode === "kids25" && origRoom.type === "kids")
           ? `${priceText} · sleva dětský pokoj`
           : priceText;
 
@@ -289,15 +332,18 @@ function renderRooms(data) {
           </div>`;
       }
 
-      // empty slot -> show estimate if someone joins this slot
-      const hypo = priceForRoomType(total, data.rooms, rType, true);
+      // empty slot -> show estimate based on cumulative position
+      const key = `${ri}-${i}`;
+      const hypo = emptySlotPrices.get(key);
       const est = formatCzk(hypo.price);
+      const personNum = hypo.totalPeople;
+      const isKidsDiscount = hypo.shares.mode === "kids25" && origRoom.type === "kids";
       const extra =
         hypo.shares.mode === "min10"
-          ? "min. cena (celkem÷10)"
-          : hypo.shares.mode === "divide"
-            ? `děleno ${hypo.totalPeople} lidmi`
-            : (r.type === "kids" ? "sleva dětský pokoj −25 %" : `děleno ${hypo.totalPeople} lidmi`);
+          ? `min. cena (celkem÷10)`
+          : isKidsDiscount
+            ? `jako ${personNum}. osoba · sleva dětský −25 %`
+            : `jako ${personNum}. osoba`;
 
       return `
         <div class="bed bed--empty">
@@ -309,7 +355,7 @@ function renderRooms(data) {
         </div>`;
     }).join("");
 
-    const typeLabel = r.type === "kids" ? "Dětský pokoj (nižší komfort)" : "Dvoulůžko (standard)";
+    const typeLabel = origRoom.type === "kids" ? "Dětský pokoj (nižší komfort)" : "Dvoulůžko (standard)";
     const occupancy = `${roomFilled}/${people.length}`;
 
     const card = document.createElement("div");
@@ -317,7 +363,7 @@ function renderRooms(data) {
     card.innerHTML = `
       <div class="roomTop">
         <div>
-          <div class="roomName">${r.name || "Pokoj"}</div>
+          <div class="roomName">${origRoom.name || "Pokoj"}</div>
           <div class="roomMeta">${typeLabel}</div>
         </div>
         <span class="roomOccupancy">${occupancy}</span>
