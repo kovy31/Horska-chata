@@ -24,7 +24,7 @@ const elCapStat = document.getElementById("capStat");
 
 const elPayAccount = document.getElementById("payAccount");
 
-// KPI
+// KPI (pozor: unitFull/unitKid už na stránce nejsou)
 const elTotal = document.getElementById("kpiTotal");
 const elPaid = document.getElementById("kpiPaid");
 const elNeed = document.getElementById("kpiNeed");
@@ -54,14 +54,14 @@ let lastSpd = "";
 
 // ---------- info modal ----------
 function openInfoModal(title, html) {
-  infoSub.textContent = title;
-  infoBody.innerHTML = html;
-  infoModal.classList.add("open");
-  infoModal.setAttribute("aria-hidden", "false");
+  if (infoSub) infoSub.textContent = title;
+  if (infoBody) infoBody.innerHTML = html;
+  infoModal?.classList.add("open");
+  infoModal?.setAttribute("aria-hidden", "false");
 }
 function closeInfoModal() {
-  infoModal.classList.remove("open");
-  infoModal.setAttribute("aria-hidden", "true");
+  infoModal?.classList.remove("open");
+  infoModal?.setAttribute("aria-hidden", "true");
 }
 infoClose?.addEventListener("click", closeInfoModal);
 infoModal?.addEventListener("click", (e) => {
@@ -71,23 +71,23 @@ infoModal?.addEventListener("click", (e) => {
 // ---------- QR modal ----------
 function openQrModal({ title, spd }) {
   lastSpd = spd;
-  qrSub.textContent = title;
-  qrBox.innerHTML = "";
+  if (qrSub) qrSub.textContent = title;
+  if (qrBox) qrBox.innerHTML = "";
   // eslint-disable-next-line no-undef
   new QRCode(qrBox, { text: spd, width: 260, height: 260, correctLevel: QRCode.CorrectLevel.M });
-  qrModal.classList.add("open");
-  qrModal.setAttribute("aria-hidden", "false");
+  qrModal?.classList.add("open");
+  qrModal?.setAttribute("aria-hidden", "false");
 }
 function closeQrModal() {
-  qrModal.classList.remove("open");
-  qrModal.setAttribute("aria-hidden", "true");
+  qrModal?.classList.remove("open");
+  qrModal?.setAttribute("aria-hidden", "true");
 }
 qrClose?.addEventListener("click", closeQrModal);
 qrModal?.addEventListener("click", (e) => {
   if (e.target?.dataset?.close) closeQrModal();
 });
 qrDownload?.addEventListener("click", () => {
-  const canvas = qrBox.querySelector("canvas");
+  const canvas = qrBox?.querySelector("canvas");
   if (canvas) {
     const url = canvas.toDataURL("image/png");
     const a = document.createElement("a");
@@ -98,7 +98,7 @@ qrDownload?.addEventListener("click", () => {
     a.remove();
     return;
   }
-  const img = qrBox.querySelector("img");
+  const img = qrBox?.querySelector("img");
   if (img?.src) {
     const a = document.createElement("a");
     a.href = img.src;
@@ -133,19 +133,19 @@ function filledBeds(data) {
 
 function renderWhoGoes(data) {
   const names = uniqSortedNamesFromRooms(data);
-  elWhoChips.innerHTML = "";
+  if (elWhoChips) elWhoChips.innerHTML = "";
   if (names.length === 0) {
-    elWhoChips.innerHTML = `<div class="emptyNote">Zatím nikdo není zapsaný v pokojích.</div>`;
-    elWhoStat.textContent = "0 potvrzených";
+    if (elWhoChips) elWhoChips.innerHTML = `<div class="emptyNote">Zatím nikdo není zapsaný v pokojích.</div>`;
+    if (elWhoStat) elWhoStat.textContent = "0 potvrzených";
     return;
   }
   for (const name of names) {
     const chip = document.createElement("div");
     chip.className = "chip";
     chip.textContent = name;
-    elWhoChips.appendChild(chip);
+    elWhoChips?.appendChild(chip);
   }
-  elWhoStat.textContent = `${names.length} potvrzených`;
+  if (elWhoStat) elWhoStat.textContent = `${names.length} potvrzených`;
 }
 
 /**
@@ -170,10 +170,10 @@ function priceForFuturePosition(totalCzk, futureIndex) {
 }
 
 function renderRooms(data) {
+  if (!elRoomsGrid) return;
   elRoomsGrid.innerHTML = "";
 
   const split = computeDueSplit(data);
-  const dueByName = new Map(split.rows.map(r => [r.name, r.due]));
   const isKidByName = new Map(split.rows.map(r => [r.name, r.isKid]));
 
   const alreadyFilled = filledBeds(data);
@@ -210,8 +210,8 @@ function renderRooms(data) {
       row.className = "row";
 
       if (name) {
-        // ✅ U obsazených NEukazujeme cenu (může být jen půlka pokoje)
         const tag = isKidByName.get(name) ? " · sleva 25%" : "";
+        // ✅ obsazené: bez ceny
         row.innerHTML = `
           <div>
             <div class="who">${name}</div>
@@ -220,10 +220,9 @@ function renderRooms(data) {
           <div class="meta"></div>
         `;
       } else {
-        // ✅ U volných ukážeme cenu pro konkrétní pořadí příchozího
         futureCounter += 1;
         const price = priceForFuturePosition(data.totalCzk, futureCounter);
-
+        // ✅ volné: ukázat cenu pro konkrétní pořadí
         row.innerHTML = `
           <div>
             <div class="who">zatím nikdo</div>
@@ -239,7 +238,7 @@ function renderRooms(data) {
     elRoomsGrid.appendChild(card);
   }
 
-  elCapStat.textContent = `Obsazeno ${filledBeds(data)}/${totalCapacity(data)}`;
+  if (elCapStat) elCapStat.textContent = `Obsazeno ${filledBeds(data)}/${totalCapacity(data)}`;
 }
 
 // ---------- Czech account -> IBAN for QR ----------
@@ -291,17 +290,17 @@ function buildSpd({ accountCz, amountCzk, message }) {
 function renderFinance(data) {
   const ledger = computeFinanceLedger(data);
 
-  elPayAccount.textContent = (data.paymentAccount || "").trim() || "Doplň v Edit stránce";
+  if (elPayAccount) elPayAccount.textContent = (data.paymentAccount || "").trim() || "Doplň v Edit stránce";
 
-  elTotal.textContent = formatCzk(data.totalCzk);
-  elPaid.textContent = formatCzk(ledger.totalPaid);
-  elNeed.textContent = formatCzk(ledger.need);
-  elSurplus.textContent = formatCzk(ledger.surplus);
+  if (elTotal) elTotal.textContent = formatCzk(data.totalCzk);
+  if (elPaid) elPaid.textContent = formatCzk(ledger.totalPaid);
+  if (elNeed) elNeed.textContent = formatCzk(ledger.need);
+  if (elSurplus) elSurplus.textContent = formatCzk(ledger.surplus);
 
   const rows = [...ledger.rows].sort((a, b) => a.name.localeCompare(b.name, "cs"));
 
-  payTableBody.innerHTML = "";
-  payList.innerHTML = "";
+  if (payTableBody) payTableBody.innerHTML = "";
+  if (payList) payList.innerHTML = "";
 
   const account = (data.paymentAccount || "").trim();
   const qrDisabled = !account;
@@ -325,7 +324,7 @@ function renderFinance(data) {
         <button class="btn tiny" data-qr="${r.name.replace(/"/g,'&quot;')}" ${qrDisabled ? "disabled" : ""}>QR</button>
       </td>
     `;
-    payTableBody.appendChild(tr);
+    payTableBody?.appendChild(tr);
 
     const card = document.createElement("div");
     card.className = "row";
@@ -340,7 +339,7 @@ function renderFinance(data) {
         <button class="btn tiny" data-qr="${r.name.replace(/"/g,'&quot;')}" ${qrDisabled ? "disabled" : ""}>QR</button>
       </div>
     `;
-    payList.appendChild(card);
+    payList?.appendChild(card);
   }
 
   document.querySelectorAll("button[data-info]").forEach(btn => {
@@ -372,7 +371,7 @@ function renderFinance(data) {
   document.querySelectorAll("button[data-qr]").forEach(btn => {
     btn.addEventListener("click", () => {
       const name = btn.getAttribute("data-qr");
-      if (!account) return alert("Chybí číslo účtu – doplň ho v Edit stránce a ulož.");
+      if (!account) return alert("Chybí číslo účtu – doplň v Edit stránce a ulož.");
 
       const row = rows.find(x => x.name === name);
       if (!row) return;
@@ -387,6 +386,7 @@ function renderFinance(data) {
 
 // ---------- Slider ----------
 function makeDots(count) {
+  if (!dotsWrap) return;
   dotsWrap.innerHTML = "";
   for (let i = 0; i < count; i++) {
     const d = document.createElement("span");
@@ -400,6 +400,7 @@ function makeDots(count) {
   }
 }
 function setActiveDot(idx) {
+  if (!dotsWrap) return;
   const dots = dotsWrap.querySelectorAll(".dot");
   dots.forEach((d, i) => d.classList.toggle("active", i === idx));
 }
@@ -427,7 +428,7 @@ async function initSlider() {
   if (usableImages.length > 1) startTimer();
 }
 function setSlide(idx) {
-  if (!usableImages.length) return;
+  if (!usableImages.length || !slideImg) return;
   slideIndex = (idx + usableImages.length) % usableImages.length;
   slideImg.src = usableImages[slideIndex];
   setActiveDot(slideIndex);
@@ -446,7 +447,9 @@ async function loadAndRender() {
     renderRooms(data);
     renderFinance(data);
   } catch (e) {
-    alert("Nepodařilo se načíst data z GitHubu:\n" + e.message);
+    // aby se ti už nepsalo "GitHub", když je to JS chyba
+    alert("Chyba aplikace:\n" + (e?.message || String(e)));
+    console.error(e);
   }
 }
 loadAndRender();
