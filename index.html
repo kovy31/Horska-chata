@@ -16,6 +16,9 @@
       </div>
     </div>
 
+    <!-- Airbnb note (editable in edit.html) -->
+    <div class="airNote" id="airNoteText" aria-live="polite"></div>
+
     <!-- Airbnb card -->
     <div class="airWrap">
       <a class="airCard" href="https://www.airbnb.cz/rooms/1509296019313360437" target="_blank" rel="noreferrer">
@@ -68,8 +71,8 @@
     <section class="section">
       <div class="sectionHead">
         <div>
-          <div class="sectionTitle">Rozdělení pokojů</div>
-          <div class="sectionSub">U volných míst se ukazuje odhad ceny pro dalšího příchozího podle pořadí obsazování pokojů.</div>
+          <div class="sectionTitle">Pokoje</div>
+          <div class="sectionSub">Rozdělení ubytování</div>
         </div>
         <div class="statPill" id="capStat">—</div>
       </div>
@@ -81,7 +84,7 @@
       <details class="details" open>
         <summary class="summary">
           <span>Finance</span>
-          <span class="summaryHint">rozbalit / sbalit</span>
+          <span class="chev" aria-hidden="true">▾</span>
         </summary>
 
         <div class="payBox">
@@ -92,7 +95,7 @@
           </div>
           <div class="payBoxRow">
             <div class="payBoxLabel">Poznámka</div>
-            <div class="payBoxValue">Do poznámky napiš jen svoje jméno.</div>
+            <div class="payBoxValue">Do poznámky u platby napiš <b>jen své jméno</b>.</div>
           </div>
         </div>
 
@@ -151,13 +154,13 @@
           <div class="modalTitle" id="infoTitle">Vyrovnání</div>
           <div class="modalSub" id="infoSub">—</div>
         </div>
-        <button class="iconBtn" id="infoClose" type="button" aria-label="Zavřít">✕</button>
+        <button class="iconBtn" id="infoCloseBtn" aria-label="Zavřít">✕</button>
       </div>
-      <div id="infoBody" class="infoBody"></div>
+      <div class="modalBody" id="infoBody">—</div>
     </div>
   </div>
 
-  <!-- QR Modal -->
+  <!-- QR modal -->
   <div class="modal" id="qrModal" aria-hidden="true">
     <div class="modalBackdrop" data-close="1"></div>
     <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="qrTitle">
@@ -166,26 +169,19 @@
           <div class="modalTitle" id="qrTitle">QR platba</div>
           <div class="modalSub" id="qrSub">—</div>
         </div>
-        <button class="iconBtn" id="qrClose" type="button" aria-label="Zavřít">✕</button>
+        <button class="iconBtn" id="qrCloseBtn" aria-label="Zavřít">✕</button>
       </div>
-
-      <div class="qrWrap">
-        <div id="qrBox" class="qrBox"></div>
-      </div>
-
-      <div class="btnRow" style="margin-top:12px;">
-        <button class="btn primary" id="qrDownload" type="button">Uložit PNG</button>
-      </div>
-
-      <div class="subSmall" style="margin-top:10px;">
-        Poznámka = jen jméno.
+      <div class="modalBody">
+        <div class="qrWrap">
+          <canvas id="qrCanvas" width="240" height="240" aria-label="QR kód"></canvas>
+        </div>
+        <div class="subSmall" id="qrSpd">—</div>
       </div>
     </div>
   </div>
 
-  <script src="./assets/config.js?v=20260211-3"></script>
-  <script src="./assets/common.js?v=20260211-3"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="./assets/view.js?v=20260211-4"></script>
+  <script src="./assets/config.js?v=20260211-1"></script>
+  <script src="./assets/common.js?v=20260211-1"></script>
+  <script src="./assets/view.js?v=20260211-1"></script>
 </body>
 </html>
