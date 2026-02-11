@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dovolená – ubytování & finance</title>
-  <link rel="stylesheet" href="./assets/style.css?v=20260211-1" />
+  <link rel="stylesheet" href="./assets/style.css?v=20260211-2" />
 </head>
 <body>
   <div class="container">
@@ -16,25 +16,20 @@
       </div>
     </div>
 
-    <!-- Airbnb card (slider) -->
     <div class="airWrap">
       <a class="airCard" href="https://www.airbnb.cz/rooms/1509296019313360437" target="_blank" rel="noreferrer">
         <div class="airImgWrap">
           <img id="airSlideImg" class="airImg"
             src="https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3cc519a7-fdd2-44a7-a44a-870c4d051530.jpeg?im_w=1200"
             alt="Black Diamond – Chalet Raven" loading="lazy" />
-
           <div class="airPill">Guest favorite</div>
           <div class="airHeart" aria-hidden="true">♡</div>
-
           <div class="airBadges">
             <span class="airBadge">📅 12.–18. 7. 2026</span>
             <span class="airBadge">💰 114 938 Kč</span>
           </div>
-
           <div class="airDots" id="airDots" aria-hidden="true"></div>
         </div>
-
         <div class="airBody">
           <div class="airTopRow">
             <div class="airTitle">Chalet in Tignes</div>
@@ -50,7 +45,6 @@
       </a>
     </div>
 
-    <!-- Who goes -->
     <section class="section">
       <div class="sectionHead">
         <div>
@@ -62,19 +56,17 @@
       <div class="chips" id="whoChips"></div>
     </section>
 
-    <!-- Rooms -->
     <section class="section">
       <div class="sectionHead">
         <div>
           <div class="sectionTitle">Rozdělení pokojů</div>
-          <div class="sectionSub">Prvních 14 osob bez slevy. Osoby 15+ mají dětskou slevu 25 %.</div>
+          <div class="sectionSub">Chata se rezervuje od 10 osob. Pokud je vás méně, všichni platí stejně (celkem / 10).</div>
         </div>
         <div class="statPill" id="capStat">—</div>
       </div>
       <div class="grid" id="roomsGrid"></div>
     </section>
 
-    <!-- Finance -->
     <section class="section">
       <details class="details" open>
         <summary class="summary">
@@ -90,14 +82,7 @@
           </div>
           <div class="payBoxRow">
             <div class="payBoxLabel">Poznámka</div>
-            <div class="payBoxValue">Do poznámky napiš jen svoje jméno (např. „Jan Novák“).</div>
-          </div>
-          <div class="payBoxRow">
-            <div class="payBoxLabel">Pravidlo</div>
-            <div class="payBoxValue">
-              Chata se rezervuje od <strong>10 osob</strong>. Cena se přepočítává podle počtu účastníků a dětské slevy.
-              Pokud se přidají další lidé, systém ukáže komu a kolik se má vrátit.
-            </div>
+            <div class="payBoxValue">Do poznámky napiš jen svoje jméno.</div>
           </div>
         </div>
 
@@ -123,13 +108,13 @@
             <div class="value" id="kpiNeed">—</div>
           </div>
           <div class="item">
-            <div class="label">Přebytek (k vrácení)</div>
+            <div class="label">Přebytek</div>
             <div class="value" id="kpiSurplus">—</div>
           </div>
         </div>
 
         <div class="tableWrap">
-          <h2 style="margin:14px 0 6px 0; font-size:16px;">Přehled plate_toggle – kdo kolik zaplatil a vyrovnání</h2>
+          <h2 style="margin:14px 0 6px 0; font-size:16px;">Kdo kolik zaplatil a vyrovnání</h2>
 
           <div class="desktopTable">
             <table class="table" id="payTable">
@@ -149,39 +134,18 @@
 
           <div class="mobileList" id="payList"></div>
         </div>
-
-        <div class="tableWrap" style="margin-top:14px;">
-          <h2 style="margin:0 0 6px 0; font-size:16px;">Návrh vratek (automaticky)</h2>
-          <div class="subSmall">Vrací se jen těm, kdo už zaplatili. Částky jsou návrh – skutečné vratky eviduješ v Edit stránce.</div>
-          <div class="desktopTable" style="display:block;">
-            <table class="table" id="refundTable">
-              <thead>
-                <tr>
-                  <th>Jméno</th>
-                  <th>Navržená vratka</th>
-                  <th>Už vráceno</th>
-                  <th>Zbývá vrátit</th>
-                  <th>Detail</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-          <div class="subSmall" id="refundEmpty" style="margin-top:10px; display:none;">Zatím není co vracet.</div>
-        </div>
-
       </details>
     </section>
 
   </div>
 
-  <!-- Info modal (payments/refunds list) -->
+  <!-- Info modal -->
   <div class="modal" id="infoModal" aria-hidden="true">
     <div class="modalBackdrop" data-close="1"></div>
     <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
       <div class="modalHead">
         <div>
-          <div class="modalTitle" id="infoTitle">Detail</div>
+          <div class="modalTitle" id="infoTitle">Vyrovnání</div>
           <div class="modalSub" id="infoSub">—</div>
         </div>
         <button class="iconBtn" id="infoClose" type="button" aria-label="Zavřít">✕</button>
@@ -212,17 +176,14 @@
       </div>
 
       <div class="subSmall" style="margin-top:10px;">
-        Načti QR v bankovní aplikaci. Poznámka = jen jméno.
+        Poznámka = jen jméno.
       </div>
     </div>
   </div>
 
-  <script src="./assets/config.js?v=20260211-1"></script>
-  <script src="./assets/common.js?v=20260211-1"></script>
-
-  <!-- QRCode lib -->
+  <script src="./assets/config.js?v=20260211-2"></script>
+  <script src="./assets/common.js?v=20260211-2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
-  <script src="./assets/view.js?v=20260211-1"></script>
+  <script src="./assets/view.js?v=20260211-2"></script>
 </body>
 </html>
