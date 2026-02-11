@@ -1,4 +1,6 @@
 // assets/view.js
+// Renders: rooms, who goes, finance + QR + modals, and Airbnb slider
+
 const AIRBNB_IMAGES = [
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3cc519a7-fdd2-44a7-a44a-870c4d051530.jpeg?im_w=1200",
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3d6a0041-65ad-4ba4-90c1-d971de85fe95.jpeg?im_w=1200",
@@ -14,7 +16,8 @@ const AIRBNB_IMAGES = [
   // "https://a0.muscache.com/im/pictures/...jpeg?im_w=1200",
   // "https://a0.muscache.com/im/pictures/...jpeg?im_w=1200",
 ];
-const SLIDE_MS = 4500;
+
+const SLIDE_MS = 4200;
 
 // DOM
 const elRoomsGrid = document.getElementById("roomsGrid");
@@ -23,8 +26,9 @@ const elWhoStat = document.getElementById("whoStat");
 const elCapStat = document.getElementById("capStat");
 
 const elPayAccount = document.getElementById("payAccount");
+const elAirNote = document.getElementById("airNoteText");
 
-// KPI (pozor: unitFull/unitKid už na stránce nejsou)
+// KPI
 const elTotal = document.getElementById("kpiTotal");
 const elPaid = document.getElementById("kpiPaid");
 const elNeed = document.getElementById("kpiNeed");
@@ -37,370 +41,296 @@ const payList = document.getElementById("payList");
 const slideImg = document.getElementById("airSlideImg");
 const dotsWrap = document.getElementById("airDots");
 
-// Info modal
+// Modals
 const infoModal = document.getElementById("infoModal");
-const infoClose = document.getElementById("infoClose");
+const infoTitle = document.getElementById("infoTitle");
 const infoSub = document.getElementById("infoSub");
 const infoBody = document.getElementById("infoBody");
+const infoCloseBtn = document.getElementById("infoCloseBtn");
 
-// QR modal
 const qrModal = document.getElementById("qrModal");
-const qrClose = document.getElementById("qrClose");
 const qrSub = document.getElementById("qrSub");
-const qrBox = document.getElementById("qrBox");
-const qrDownload = document.getElementById("qrDownload");
+const qrCanvas = document.getElementById("qrCanvas");
+const qrSpd = document.getElementById("qrSpd");
+const qrCloseBtn = document.getElementById("qrCloseBtn");
 
-let lastSpd = "";
+function openInfoModal(title, sub, bodyHtml) {
+  infoTitle.textContent = title || "Vyrovnání";
+  infoSub.textContent = sub || "—";
+  infoBody.innerHTML = bodyHtml || "—";
+  infoModal.setAttribute("aria-hidden", "false");
+}
+function closeInfoModal() { infoModal.setAttribute("aria-hidden", "true"); }
 
-// ---------- info modal ----------
-function openInfoModal(title, html) {
-  if (infoSub) infoSub.textContent = title;
-  if (infoBody) infoBody.innerHTML = html;
-  infoModal?.classList.add("open");
-  infoModal?.setAttribute("aria-hidden", "false");
+function openQrModal(subText, spdText) {
+  qrSub.textContent = subText || "—";
+  qrSpd.textContent = spdText || "—";
+  qrModal.setAttribute("aria-hidden", "false");
 }
-function closeInfoModal() {
-  infoModal?.classList.remove("open");
-  infoModal?.setAttribute("aria-hidden", "true");
-}
-infoClose?.addEventListener("click", closeInfoModal);
-infoModal?.addEventListener("click", (e) => {
-  if (e.target?.dataset?.close) closeInfoModal();
-});
+function closeQrModal() { qrModal.setAttribute("aria-hidden", "true"); }
 
-// ---------- QR modal ----------
-function openQrModal({ title, spd }) {
-  lastSpd = spd;
-  if (qrSub) qrSub.textContent = title;
-  if (qrBox) qrBox.innerHTML = "";
-  // eslint-disable-next-line no-undef
-  new QRCode(qrBox, { text: spd, width: 260, height: 260, correctLevel: QRCode.CorrectLevel.M });
-  qrModal?.classList.add("open");
-  qrModal?.setAttribute("aria-hidden", "false");
-}
-function closeQrModal() {
-  qrModal?.classList.remove("open");
-  qrModal?.setAttribute("aria-hidden", "true");
-}
-qrClose?.addEventListener("click", closeQrModal);
-qrModal?.addEventListener("click", (e) => {
-  if (e.target?.dataset?.close) closeQrModal();
-});
-qrDownload?.addEventListener("click", () => {
-  const canvas = qrBox?.querySelector("canvas");
-  if (canvas) {
-    const url = canvas.toDataURL("image/png");
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "qr-platba.png";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    return;
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  if (t && t.dataset && t.dataset.close) {
+    closeInfoModal();
+    closeQrModal();
   }
-  const img = qrBox?.querySelector("img");
-  if (img?.src) {
-    const a = document.createElement("a");
-    a.href = img.src;
-    a.download = "qr-platba.png";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    return;
-  }
-  alert("QR se nepodařilo uložit.");
 });
 
-// ---------- participants ----------
-function uniqSortedNamesFromRooms(data) {
+infoCloseBtn?.addEventListener("click", closeInfoModal);
+qrCloseBtn?.addEventListener("click", closeQrModal);
+
+// ---- helpers ----
+function uniqSortedNamesFromRooms(rooms) {
   const set = new Set();
-  for (const room of data.rooms) {
-    for (const raw of room.people) {
-      const name = (raw || "").trim();
-      if (name) set.add(name);
+  for (const r of rooms || []) {
+    for (const p of (r.people || [])) {
+      const n = normalizeName(p);
+      if (n) set.add(n);
     }
   }
   return Array.from(set).sort((a, b) => a.localeCompare(b, "cs"));
 }
-function totalCapacity(data) {
-  return data.rooms.reduce((sum, r) => sum + (Array.isArray(r.people) ? r.people.length : 0), 0);
+
+function totalCapacity(rooms) {
+  let cap = 0;
+  for (const r of rooms || []) cap += Array.isArray(r.people) ? r.people.length : 0;
+  return cap;
 }
-function filledBeds(data) {
-  let n = 0;
-  for (const r of data.rooms) for (const p of r.people) if ((p || "").trim()) n++;
-  return n;
+function filledBeds(rooms) {
+  let used = 0;
+  for (const r of rooms || []) {
+    for (const p of (r.people || [])) if (normalizeName(p)) used++;
+  }
+  return used;
 }
 
+// ---- render: who goes ----
 function renderWhoGoes(data) {
-  const names = uniqSortedNamesFromRooms(data);
-  if (elWhoChips) elWhoChips.innerHTML = "";
-  if (names.length === 0) {
-    if (elWhoChips) elWhoChips.innerHTML = `<div class="emptyNote">Zatím nikdo není zapsaný v pokojích.</div>`;
-    if (elWhoStat) elWhoStat.textContent = "0 potvrzených";
-    return;
-  }
-  for (const name of names) {
-    const chip = document.createElement("div");
-    chip.className = "chip";
-    chip.textContent = name;
-    elWhoChips?.appendChild(chip);
-  }
-  if (elWhoStat) elWhoStat.textContent = `${names.length} potvrzených`;
+  const names = uniqSortedNamesFromRooms(data.rooms);
+  elWhoChips.innerHTML = names.map(n => `<span class="chip">${n}</span>`).join("");
+  elWhoStat.textContent = `${names.length} osob`;
 }
 
-/**
- * Cena pro "příštího člověka" podle pořadí (1-based):
- * - 1–14: váha 1.00
- * - 15+: váha 0.75
- * - minimálně se dělí 10 (rezervace od 10)
- */
-function priceForFuturePosition(totalCzk, futureIndex) {
-  const idx = Math.max(1, Math.floor(futureIndex));
-
-  const full = Math.min(idx, 14);
-  const kids = Math.max(0, idx - 14);
-
-  const weighted = full + kids * 0.75;
-  const divisor = Math.max(10, weighted);
-
-  const unitFull = totalCzk / divisor;
-  const due = idx > 14 ? unitFull * 0.75 : unitFull;
-
-  return Math.round(due);
+// ---- rooms ----
+function priceForFuturePosition(idx) {
+  return idx === 0 ? "A" : idx === 1 ? "B" : String(idx + 1);
 }
 
 function renderRooms(data) {
-  if (!elRoomsGrid) return;
   elRoomsGrid.innerHTML = "";
+  const cap = totalCapacity(data.rooms);
+  const used = filledBeds(data.rooms);
+  elCapStat.textContent = `${used}/${cap} obsazeno`;
 
-  const split = computeDueSplit(data);
-  const isKidByName = new Map(split.rows.map(r => [r.name, r.isKid]));
+  for (const r of data.rooms || []) {
+    const people = (r.people || []).map(x => normalizeName(x));
+    const bedsHtml = people.map((p, i) => {
+      const label = priceForFuturePosition(i);
+      return `
+        <div class="bed">
+          <div>
+            <div class="bedName">${p || "—"}</div>
+            <div class="bedHint">Místo ${label}</div>
+          </div>
+        </div>`;
+    }).join("");
 
-  const alreadyFilled = filledBeds(data);
-  let futureCounter = alreadyFilled;
-
-  for (const room of data.rooms) {
     const card = document.createElement("div");
-    card.className = "card";
-
-    const capacity = room.people.length;
-    const filled = room.people.filter(p => (p || "").trim()).length;
-    const isFull = filled === capacity && capacity > 0;
-    const isEmpty = filled === 0;
-
-    const statusClass = isFull ? "roomStatus full" : isEmpty ? "roomStatus empty" : "roomStatus partial";
-    const statusText = isFull ? "Plno" : isEmpty ? "Volno" : "Částečně";
-
+    card.className = "roomCard";
     card.innerHTML = `
-      <div class="roomHead">
+      <div class="roomTop">
         <div>
-          <h2>${room.name}</h2>
-          <div class="meta">${room.type === "kids" ? "Pokoj s nižším komfortem (sleva po 14. osobě)" : "Pokoj s manželskou postelí"}</div>
+          <div class="roomName">${r.name || "Pokoj"}</div>
+          <div class="roomMeta">${r.type === "kids" ? "Dětský pokoj" : "Dvoulůžko"}</div>
         </div>
-        <div class="${statusClass}">${statusText} · ${filled}/${capacity}</div>
       </div>
-      <div class="list"></div>
+      <div class="beds">${bedsHtml}</div>
     `;
-
-    const list = card.querySelector(".list");
-
-    for (let i = 0; i < capacity; i++) {
-      const name = (room.people[i] || "").trim();
-      const row = document.createElement("div");
-      row.className = "row";
-
-      if (name) {
-        const tag = isKidByName.get(name) ? " · sleva 25%" : "";
-        // ✅ obsazené: bez ceny
-        row.innerHTML = `
-          <div>
-            <div class="who">${name}</div>
-            <div class="meta">potvrzeno${tag}</div>
-          </div>
-          <div class="meta"></div>
-        `;
-      } else {
-        futureCounter += 1;
-        const price = priceForFuturePosition(data.totalCzk, futureCounter);
-        // ✅ volné: ukázat cenu pro konkrétní pořadí
-        row.innerHTML = `
-          <div>
-            <div class="who">zatím nikdo</div>
-            <div class="meta">cena ${formatCzk(price)}</div>
-          </div>
-          <div class="meta"></div>
-        `;
-      }
-
-      list.appendChild(row);
-    }
-
     elRoomsGrid.appendChild(card);
   }
-
-  if (elCapStat) elCapStat.textContent = `Obsazeno ${filledBeds(data)}/${totalCapacity(data)}`;
 }
 
-// ---------- Czech account -> IBAN for QR ----------
+// ---- finance helpers ----
 function parseCzAccount(acc) {
-  const s = (acc || "").trim().replace(/\s+/g, "");
-  if (!s.includes("/")) return null;
-  const [left, bank] = s.split("/");
-  if (!bank || !/^\d{4}$/.test(bank)) return null;
+  const t = (acc || "").trim();
+  const m = t.match(/^(\d{1,10})\/(\d{4})$/);
+  if (m) return { prefix: "", number: m[1], bank: m[2] };
+  const m2 = t.match(/^(\d{1,6})-(\d{1,10})\/(\d{4})$/);
+  if (m2) return { prefix: m2[1], number: m2[2], bank: m2[3] };
+  return null;
+}
 
-  let prefix = "0";
-  let number = left;
-  if (left.includes("-")) {
-    const [p, n] = left.split("-");
-    prefix = p || "0";
-    number = n || "";
+// mod97
+function mod97(ibanNumeric) {
+  let rem = 0;
+  for (const ch of ibanNumeric) {
+    rem = (rem * 10 + (ch.charCodeAt(0) - 48)) % 97;
   }
-  if (!/^\d{1,6}$/.test(prefix)) return null;
-  if (!/^\d{1,10}$/.test(number)) return null;
-
-  return { bankCode: bank, prefix, accountNumber: number };
+  return rem;
 }
-function mod97(numStr) {
-  let remainder = 0;
-  for (let i = 0; i < numStr.length; i++) {
-    remainder = (remainder * 10 + (numStr.charCodeAt(i) - 48)) % 97;
+
+// convert CZ account to IBAN
+function czAccountToIban(prefix, number, bank) {
+  const pad = (s, len) => String(s || "").padStart(len, "0");
+  const bban = pad(bank, 4) + pad(prefix, 6) + pad(number, 10);
+  const country = "CZ";
+  const check = "00";
+  const rearr = bban + country + check;
+  let numeric = "";
+  for (const c of rearr) {
+    if (c >= "A" && c <= "Z") numeric += String(c.charCodeAt(0) - 55);
+    else numeric += c;
   }
-  return remainder;
-}
-function czAccountToIban(acc) {
-  const p = parseCzAccount(acc);
-  if (!p) return null;
-  const bank = p.bankCode.padStart(4, "0");
-  const prefix = p.prefix.padStart(6, "0");
-  const acct = p.accountNumber.padStart(10, "0");
-  const bban = bank + prefix + acct;
-  const rearranged = bban + "123500";
-  const check = 98 - mod97(rearranged);
-  const cd = String(check).padStart(2, "0");
-  return `CZ${cd}${bban}`;
-}
-function buildSpd({ accountCz, amountCzk, message }) {
-  const iban = czAccountToIban(accountCz);
-  if (!iban) return null;
-  const am = (Math.round(Number(amountCzk) || 0)).toFixed(2);
-  const msg = encodeURIComponent(String(message || "").trim()).replace(/%20/g, " ");
-  return `SPD*1.0*ACC:${iban}*AM:${am}*CC:CZK*MSG:${msg}*`;
+  const r = mod97(numeric);
+  const cd = String(98 - r).padStart(2, "0");
+  return country + cd + bban;
 }
 
+function buildSpd({ iban, amount, msg }) {
+  const a = Math.round(Number(amount) || 0);
+  const m = (msg || "").trim();
+  const parts = [
+    "SPD",
+    "1.0",
+    `ACC:${iban}`,
+    `AM:${(a / 100).toFixed(2)}`,
+    "CC:CZK",
+  ];
+  if (m) parts.push(`MSG:${m}`);
+  return parts.join("*");
+}
+
+// ---- render finance ----
 function renderFinance(data) {
-  const ledger = computeFinanceLedger(data);
+  elPayAccount.textContent = data.paymentAccount ? data.paymentAccount : "—";
 
-  if (elPayAccount) elPayAccount.textContent = (data.paymentAccount || "").trim() || "Doplň v Edit stránce";
+  const total = Math.round(Number(data.totalCzk) || 0);
+  let paid = 0;
+  let refunded = 0;
 
-  if (elTotal) elTotal.textContent = formatCzk(data.totalCzk);
-  if (elPaid) elPaid.textContent = formatCzk(ledger.totalPaid);
-  if (elNeed) elNeed.textContent = formatCzk(ledger.need);
-  if (elSurplus) elSurplus.textContent = formatCzk(ledger.surplus);
+  for (const rec of Object.values(data.people || {})) {
+    for (const p of (rec.payments || [])) paid += Math.round(Number(p.amount) || 0);
+    for (const r of (rec.refunds || [])) refunded += Math.round(Number(r.amount) || 0);
+  }
 
-  const rows = [...ledger.rows].sort((a, b) => a.name.localeCompare(b.name, "cs"));
+  const need = Math.max(0, total - paid);
+  const surplus = Math.max(0, paid - total);
 
-  if (payTableBody) payTableBody.innerHTML = "";
-  if (payList) payList.innerHTML = "";
+  elTotal.textContent = formatCzk(total);
+  elPaid.textContent = formatCzk(paid);
+  elNeed.textContent = formatCzk(need);
+  elSurplus.textContent = formatCzk(surplus);
 
-  const account = (data.paymentAccount || "").trim();
-  const qrDisabled = !account;
+  const names = uniqSortedNamesFromRooms(data.rooms);
+  const count = Math.max(1, names.length);
+  const per = Math.round(total / count);
 
-  for (const r of rows) {
-    const balanceText =
-      r.overpay > 0 ? `Přeplatek ${formatCzk(r.overpay)}`
-      : r.underpay > 0 ? `Nedoplatek ${formatCzk(r.underpay)}`
-      : "Srovnáno";
+  const nameToRoom = new Map();
+  for (const r of data.rooms || []) {
+    for (const p of (r.people || [])) {
+      const n = normalizeName(p);
+      if (n) nameToRoom.set(n, r.name || "—");
+    }
+  }
 
-    const infoBtn = `<button class="iconTiny" data-info="${r.name.replace(/"/g,'&quot;')}">i</button>`;
+  payTableBody.innerHTML = "";
+  payList.innerHTML = "";
+
+  for (const name of names) {
+    const rec = data.people?.[name] || { payments: [], refunds: [] };
+    const paidOne = (rec.payments || []).reduce((s, x) => s + (Math.round(Number(x.amount) || 0)), 0);
+    const room = nameToRoom.get(name) || "—";
+
+    const delta = paidOne - per;
+    const deltaText = delta === 0 ? "OK" : (delta > 0 ? `+${formatCzk(delta)}` : `-${formatCzk(Math.abs(delta))}`);
+
+    let qrBtn = "";
+    if (delta < 0 && data.paymentAccount) {
+      const parsed = parseCzAccount(data.paymentAccount);
+      if (parsed) {
+        const iban = czAccountToIban(parsed.prefix, parsed.number, parsed.bank);
+        const spd = buildSpd({ iban, amount: Math.abs(delta), msg: name });
+        qrBtn = `<button class="btn" data-qr="1" data-name="${name}" data-amount="${Math.abs(delta)}" data-spd="${spd}">QR</button>`;
+      }
+    }
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${r.name}${r.isKid ? ` <span class="miniTag">sleva 25%</span>` : ""}</td>
-      <td>${r.roomName}</td>
-      <td class="center"><strong>${formatCzk(r.due)}</strong></td>
-      <td class="center">${formatCzk(r.paid)}</td>
-      <td class="center"><strong>${balanceText}</strong> ${infoBtn}</td>
-      <td class="center">
-        <button class="btn tiny" data-qr="${r.name.replace(/"/g,'&quot;')}" ${qrDisabled ? "disabled" : ""}>QR</button>
-      </td>
+      <td>${name}</td>
+      <td class="center">${room}</td>
+      <td class="center">${formatCzk(per)}</td>
+      <td class="center">${formatCzk(paidOne)}</td>
+      <td class="center"><button class="btn" data-info="1" data-name="${name}">${deltaText}</button></td>
+      <td class="center">${qrBtn || "—"}</td>
     `;
-    payTableBody?.appendChild(tr);
+    payTableBody.appendChild(tr);
 
-    const card = document.createElement("div");
-    card.className = "row";
-    card.innerHTML = `
-      <div>
-        <div class="who">${r.name} ${r.isKid ? `<span class="miniTag">sleva 25%</span>` : ""}</div>
-        <div class="meta">${r.roomName}</div>
-        <div class="meta">Má platit: ${formatCzk(r.due)} · Zaplaceno: ${formatCzk(r.paid)}</div>
-        <div class="meta"><strong>${balanceText}</strong> ${infoBtn}</div>
+    const div = document.createElement("div");
+    div.className = "roomCard";
+    div.innerHTML = `
+      <div class="roomTop">
+        <div>
+          <div class="roomName">${name}</div>
+          <div class="roomMeta">${room}</div>
+        </div>
+        <div class="roomName">${deltaText}</div>
       </div>
-      <div>
-        <button class="btn tiny" data-qr="${r.name.replace(/"/g,'&quot;')}" ${qrDisabled ? "disabled" : ""}>QR</button>
+      <div class="subSmall" style="margin-top:8px;">Má platit: <b>${formatCzk(per)}</b> · Zaplaceno: <b>${formatCzk(paidOne)}</b></div>
+      <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn" data-info="1" data-name="${name}">Detail</button>
+        ${qrBtn || ""}
       </div>
     `;
-    payList?.appendChild(card);
+    payList.appendChild(div);
   }
 
-  document.querySelectorAll("button[data-info]").forEach(btn => {
+  document.querySelectorAll("[data-info='1']").forEach(btn => {
     btn.addEventListener("click", () => {
-      const name = btn.getAttribute("data-info");
-      const row = rows.find(x => x.name === name);
-      if (!row) return;
-
-      const pays = (row.payments || [])
-        .slice()
-        .sort((a, b) => String(a.date||"").localeCompare(String(b.date||"")))
-        .map(p => `<div class="infoRow"><div>Platba: ${p.date || "—"}</div><div class="mono">${formatCzk(p.amount)}</div></div>`)
-        .join("");
-
-      const refs = (row.refunds || [])
-        .slice()
-        .sort((a, b) => String(a.date||"").localeCompare(String(b.date||"")))
-        .map(p => `<div class="infoRow"><div>Vratka: ${p.date || "—"}</div><div class="mono">${formatCzk(p.amount)}</div></div>`)
-        .join("");
-
-      const html =
-        (pays || `<div class="subSmall">Žádné platby.</div>`) +
-        (refs ? `<div style="height:10px"></div>${refs}` : `<div style="height:10px"></div><div class="subSmall">Žádné vratky.</div>`);
-
-      openInfoModal(`${name} – historie vyrovnání`, html);
+      const name = btn.getAttribute("data-name");
+      const rec = data.people?.[name] || { payments: [], refunds: [] };
+      const p = (rec.payments || []).map(x => `<li>${formatCzk(x.amount)} · ${x.date || "—"}</li>`).join("") || "<li>—</li>";
+      const r = (rec.refunds || []).map(x => `<li>${formatCzk(x.amount)} · ${x.date || "—"}</li>`).join("") || "<li>—</li>";
+      openInfoModal("Vyrovnání", name, `
+        <div><b>Platby</b><ul>${p}</ul></div>
+        <div style="margin-top:10px;"><b>Vratky</b><ul>${r}</ul></div>
+      `);
     });
   });
 
-  document.querySelectorAll("button[data-qr]").forEach(btn => {
+  document.querySelectorAll("[data-qr='1']").forEach(btn => {
     btn.addEventListener("click", () => {
-      const name = btn.getAttribute("data-qr");
-      if (!account) return alert("Chybí číslo účtu – doplň v Edit stránce a ulož.");
+      const name = btn.getAttribute("data-name");
+      const amount = Number(btn.getAttribute("data-amount") || 0);
+      const spd = btn.getAttribute("data-spd") || "";
+      if (!spd) return;
 
-      const row = rows.find(x => x.name === name);
-      if (!row) return;
+      const ctx = qrCanvas.getContext("2d");
+      ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
 
-      const spd = buildSpd({ accountCz: account, amountCzk: row.due, message: row.name });
-      if (!spd) return alert("Neplatné číslo účtu. Použij např. 123456789/0100 nebo 19-123456789/0100.");
+      if (window.QRCode && window.QRCode.toCanvas) {
+        window.QRCode.toCanvas(qrCanvas, spd, { width: 240 }, () => {});
+      } else {
+        ctx.font = "12px monospace";
+        ctx.fillText("QR knihovna chybí", 10, 24);
+      }
 
-      openQrModal({ title: `${row.name} · ${formatCzk(row.due)}`, spd });
+      openQrModal(`${name} · ${formatCzk(amount)}`, spd);
     });
   });
 }
 
-// ---------- Slider ----------
-function makeDots(count) {
-  if (!dotsWrap) return;
+// ---- slider ----
+function makeDots(n) {
   dotsWrap.innerHTML = "";
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < n; i++) {
     const d = document.createElement("span");
     d.className = "dot" + (i === 0 ? " active" : "");
-    d.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      setSlide(i);
-      restartTimer();
-    });
+    d.addEventListener("click", () => { setSlide(i); restartTimer(); });
     dotsWrap.appendChild(d);
   }
 }
 function setActiveDot(idx) {
-  if (!dotsWrap) return;
   const dots = dotsWrap.querySelectorAll(".dot");
   dots.forEach((d, i) => d.classList.toggle("active", i === idx));
 }
@@ -439,18 +369,24 @@ function restartTimer() {
   if (usableImages.length > 1) startTimer();
 }
 
-// boot
 async function loadAndRender() {
   try {
     const data = await loadDataFromGitHub();
+
+    if (elAirNote) {
+      const t = (data.airNote || "").trim();
+      elAirNote.innerHTML = t ? t : "";
+      elAirNote.style.display = t ? "block" : "none";
+    }
+
     renderWhoGoes(data);
     renderRooms(data);
     renderFinance(data);
+    await initSlider();
   } catch (e) {
-    // aby se ti už nepsalo "GitHub", když je to JS chyba
-    alert("Chyba aplikace:\n" + (e?.message || String(e)));
     console.error(e);
+    alert("Nepodařilo se načíst data z GitHub Issue:\n" + e.message);
   }
 }
+
 loadAndRender();
-initSlider();
