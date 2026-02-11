@@ -232,6 +232,20 @@ h1{ margin:0; font-size:22px; letter-spacing:.2px; }
    Sections
 ========================= */
 .section{ margin-top:18px; }
+.section--tight{ margin-top:10px; }
+
+/* red info banner */
+.banner{
+  background:#c0392b;
+  color:#fff;
+  padding:12px 16px;
+  border-radius:10px;
+  font-size:14px;
+  font-weight:700;
+  line-height:1.5;
+  margin-top:14px;
+  text-align:center;
+}
 .sectionHead{
   display:flex;
   justify-content:space-between;
