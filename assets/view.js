@@ -1,5 +1,3 @@
-// assets/view.js
-
 const AIRBNB_IMAGES = [
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3cc519a7-fdd2-44a7-a44a-870c4d051530.jpeg?im_w=1200",
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3d6a0041-65ad-4ba4-90c1-d971de85fe95.jpeg?im_w=1200",
@@ -36,9 +34,6 @@ const elSurplus = document.getElementById("kpiSurplus");
 const payTableBody = document.querySelector("#payTable tbody");
 const payList = document.getElementById("payList");
 
-const refundTableBody = document.querySelector("#refundTable tbody");
-const refundEmpty = document.getElementById("refundEmpty");
-
 // Slider
 const slideImg = document.getElementById("airSlideImg");
 const dotsWrap = document.getElementById("airDots");
@@ -59,7 +54,7 @@ const qrCopy = document.getElementById("qrCopy");
 
 let lastSpd = "";
 
-// ---------- UI helpers ----------
+// ---------- info modal ----------
 function openInfoModal(title, html) {
   infoSub.textContent = title;
   infoBody.innerHTML = html;
@@ -75,6 +70,7 @@ infoModal?.addEventListener("click", (e) => {
   if (e.target?.dataset?.close) closeInfoModal();
 });
 
+// ---------- QR modal ----------
 function openQrModal({ title, spd }) {
   lastSpd = spd;
   qrSub.textContent = title;
@@ -98,7 +94,7 @@ qrCopy?.addEventListener("click", async () => {
     qrCopy.textContent = "Zkopírováno ✓";
     setTimeout(() => (qrCopy.textContent = "Zkopírovat SPD"), 1200);
   } catch {
-    alert("Nepodařilo se zkopírovat. Zkus to prosím ručně.");
+    alert("Nepodařilo se zkopírovat.");
   }
 });
 qrDownload?.addEventListener("click", () => {
@@ -165,8 +161,8 @@ function renderWhoGoes(data) {
 
 function renderRooms(data) {
   elRoomsGrid.innerHTML = "";
-
   const split = computeDueSplit(data);
+
   const byRoom = new Map();
   for (const r of split.rows) {
     if (!byRoom.has(r.roomId)) byRoom.set(r.roomId, []);
@@ -189,7 +185,7 @@ function renderRooms(data) {
       <div class="roomHead">
         <div>
           <h2>${room.name}</h2>
-          <div class="meta">${room.type === "kids" ? "Dětský pokoj (sleva 25 % pro osoby 15+)" : "Pokoj s manželskou postelí"}</div>
+          <div class="meta">${room.type === "kids" ? "Dětský pokoj (sleva 25% pro osoby 15+)" : "Pokoj s manželskou postelí"}</div>
         </div>
         <div class="${statusClass}">${statusText} · ${filled}/${capacity}</div>
       </div>
@@ -206,7 +202,7 @@ function renderRooms(data) {
       list.appendChild(empty);
     } else {
       for (const p of rows) {
-        const tag = p.isKid ? " · sleva 25 %" : "";
+        const tag = p.isKid ? " · sleva 25%" : "";
         const row = document.createElement("div");
         row.className = "row";
         row.innerHTML = `
@@ -226,7 +222,7 @@ function renderRooms(data) {
   elCapStat.textContent = `Obsazeno ${filledBeds(data)}/${totalCapacity(data)}`;
 }
 
-/* ---------- Czech account -> IBAN (CZ) for QR SPD ---------- */
+// ---------- Czech account -> IBAN for QR ----------
 function parseCzAccount(acc) {
   const s = (acc || "").trim().replace(/\s+/g, "");
   if (!s.includes("/")) return null;
@@ -235,7 +231,6 @@ function parseCzAccount(acc) {
 
   let prefix = "0";
   let number = left;
-
   if (left.includes("-")) {
     const [p, n] = left.split("-");
     prefix = p || "0";
@@ -260,8 +255,7 @@ function czAccountToIban(acc) {
   const prefix = p.prefix.padStart(6, "0");
   const acct = p.accountNumber.padStart(10, "0");
   const bban = bank + prefix + acct;
-
-  const rearranged = bban + "123500"; // CZ00 -> 12 35 00
+  const rearranged = bban + "123500";
   const check = 98 - mod97(rearranged);
   const cd = String(check).padStart(2, "0");
   return `CZ${cd}${bban}`;
@@ -289,7 +283,6 @@ function renderFinance(data) {
 
   const rows = [...ledger.rows].sort((a, b) => a.name.localeCompare(b.name, "cs"));
 
-  // main table
   payTableBody.innerHTML = "";
   payList.innerHTML = "";
 
@@ -297,19 +290,21 @@ function renderFinance(data) {
   const qrDisabled = !account;
 
   for (const r of rows) {
-    const paidInfoBtn = `<button class="iconTiny" data-info="pay" data-name="${r.name.replace(/"/g,'&quot;')}">i</button>`;
-    const refundInfoBtn = `<button class="iconTiny" data-info="ref" data-name="${r.name.replace(/"/g,'&quot;')}">i</button>`;
+    // Vyrovnání (přeplatek / nedoplatek)
+    const balanceText =
+      r.overpay > 0 ? `Přeplatek ${formatCzk(r.overpay)}`
+      : r.underpay > 0 ? `Nedoplatek ${formatCzk(r.underpay)}`
+      : "Srovnáno";
+
+    const infoBtn = `<button class="iconTiny" data-info="${r.name.replace(/"/g,'&quot;')}">i</button>`;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${r.name}${r.isKid ? ` <span class="miniTag">sleva 25%</span>` : ""}</td>
       <td>${r.roomName}</td>
-      <td><strong>${formatCzk(r.due)}</strong></td>
-      <td class="center">${formatCzk(r.paid)} ${paidInfoBtn}</td>
-      <td class="center">
-        <strong>${r.balanceText}</strong>
-        ${r.suggestedRefund > 0 ? ` ${refundInfoBtn}` : ""}
-      </td>
+      <td class="center"><strong>${formatCzk(r.due)}</strong></td>
+      <td class="center">${formatCzk(r.paid)}</td>
+      <td class="center"><strong>${balanceText}</strong> ${infoBtn}</td>
       <td class="center">
         <button class="btn tiny" data-qr="${r.name.replace(/"/g,'&quot;')}" ${qrDisabled ? "disabled" : ""}>QR</button>
       </td>
@@ -322,9 +317,8 @@ function renderFinance(data) {
       <div>
         <div class="who">${r.name} ${r.isKid ? `<span class="miniTag">sleva 25%</span>` : ""}</div>
         <div class="meta">${r.roomName}</div>
-        <div class="meta">Má platit: ${formatCzk(r.due)}</div>
-        <div class="meta">Zaplaceno: ${formatCzk(r.paid)} <button class="iconTiny" data-info="pay" data-name="${r.name.replace(/"/g,'&quot;')}">i</button></div>
-        <div class="meta"><strong>${r.balanceText}</strong> ${r.suggestedRefund>0 ? `<button class="iconTiny" data-info="ref" data-name="${r.name.replace(/"/g,'&quot;')}">i</button>` : ""}</div>
+        <div class="meta">Má platit: ${formatCzk(r.due)} · Zaplaceno: ${formatCzk(r.paid)}</div>
+        <div class="meta"><strong>${balanceText}</strong> ${infoBtn}</div>
       </div>
       <div>
         <button class="btn tiny" data-qr="${r.name.replace(/"/g,'&quot;')}" ${qrDisabled ? "disabled" : ""}>QR</button>
@@ -333,69 +327,45 @@ function renderFinance(data) {
     payList.appendChild(card);
   }
 
-  // refund suggestion table
-  refundTableBody.innerHTML = "";
-  let anyRefund = false;
-
-  for (const r of rows) {
-    const suggested = r.suggestedRefund || 0;
-    const already = r.refunded || 0;
-    const remain = Math.max(0, suggested - 0); // suggested is "now" amount; actual remaining = suggested, since we propose, not enforce
-    if (suggested <= 0) continue;
-    anyRefund = true;
-
-    const detailBtn = `<button class="btn tiny" data-info="ref" data-name="${r.name.replace(/"/g,'&quot;')}">Detail</button>`;
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><strong>${r.name}</strong></td>
-      <td class="center"><strong>${formatCzk(suggested)}</strong></td>
-      <td class="center">${formatCzk(already)}</td>
-      <td class="center">${formatCzk(remain)}</td>
-      <td class="center">${detailBtn}</td>
-    `;
-    refundTableBody.appendChild(tr);
-  }
-
-  refundEmpty.style.display = anyRefund ? "none" : "block";
-
-  // handlers: info
+  // info handlers (show payments + refunds with dates)
   document.querySelectorAll("button[data-info]").forEach(btn => {
     btn.addEventListener("click", () => {
-      const kind = btn.getAttribute("data-info");
-      const name = btn.getAttribute("data-name");
+      const name = btn.getAttribute("data-info");
       const row = rows.find(x => x.name === name);
       if (!row) return;
 
-      if (kind === "pay") {
-        const list = (row.payments || [])
-          .slice()
-          .sort((a, b) => String(a.date||"").localeCompare(String(b.date||"")))
-          .map(p => `<div class="infoRow"><div>${p.date || "—"}</div><div class="mono">${formatCzk(p.amount)}</div></div>`)
-          .join("");
-        openInfoModal(`${name} – Platby`, list || `<div class="subSmall">Žádné platby.</div>`);
-      } else {
-        const list = (row.refunds || [])
-          .slice()
-          .sort((a, b) => String(a.date||"").localeCompare(String(b.date||"")))
-          .map(p => `<div class="infoRow"><div>${p.date || "—"}</div><div class="mono">${formatCzk(p.amount)}</div></div>`)
-          .join("");
-        const extra = `<div class="subSmall" style="margin-top:10px;">Navržená vratka teď: <strong>${formatCzk(row.suggestedRefund || 0)}</strong></div>`;
-        openInfoModal(`${name} – Vratky`, (list || `<div class="subSmall">Zatím nic nebylo vráceno.</div>`) + extra);
-      }
+      const pays = (row.payments || [])
+        .slice()
+        .sort((a, b) => String(a.date||"").localeCompare(String(b.date||"")))
+        .map(p => `<div class="infoRow"><div>Platba: ${p.date || "—"}</div><div class="mono">${formatCzk(p.amount)}</div></div>`)
+        .join("");
+
+      const refs = (row.refunds || [])
+        .slice()
+        .sort((a, b) => String(a.date||"").localeCompare(String(b.date||"")))
+        .map(p => `<div class="infoRow"><div>Vratka: ${p.date || "—"}</div><div class="mono">${formatCzk(p.amount)}</div></div>`)
+        .join("");
+
+      const html =
+        (pays || `<div class="subSmall">Žádné platby.</div>`) +
+        (refs ? `<div style="height:10px"></div>${refs}` : `<div style="height:10px"></div><div class="subSmall">Žádné vratky.</div>`);
+
+      openInfoModal(`${name} – historie vyrovnání`, html);
     });
   });
 
-  // handlers: QR
+  // QR handlers
   document.querySelectorAll("button[data-qr]").forEach(btn => {
     btn.addEventListener("click", () => {
       const name = btn.getAttribute("data-qr");
       if (!account) return alert("Chybí číslo účtu – doplň ho v Edit stránce a ulož.");
+
       const row = rows.find(x => x.name === name);
       if (!row) return;
 
       const spd = buildSpd({ accountCz: account, amountCzk: row.due, message: row.name });
       if (!spd) return alert("Neplatné číslo účtu. Použij např. 123456789/0100 nebo 19-123456789/0100.");
+
       openQrModal({ title: `${row.name} · ${formatCzk(row.due)}`, spd });
     });
   });
@@ -434,15 +404,12 @@ let usableImages = [];
 
 async function initSlider() {
   if (!slideImg || !dotsWrap) return;
-
   const checks = await Promise.all(AIRBNB_IMAGES.map(u => tryLoadImage(u)));
   usableImages = AIRBNB_IMAGES.filter((_, i) => checks[i]);
   if (usableImages.length === 0) usableImages = [slideImg.src];
-
   makeDots(usableImages.length);
   slideIndex = 0;
   setSlide(0);
-
   if (usableImages.length > 1) startTimer();
 }
 function setSlide(idx) {
@@ -451,14 +418,13 @@ function setSlide(idx) {
   slideImg.src = usableImages[slideIndex];
   setActiveDot(slideIndex);
 }
-function startTimer() {
-  timer = setInterval(() => setSlide(slideIndex + 1), SLIDE_MS);
-}
+function startTimer() { timer = setInterval(() => setSlide(slideIndex + 1), SLIDE_MS); }
 function restartTimer() {
   if (timer) clearInterval(timer);
   if (usableImages.length > 1) startTimer();
 }
 
+// boot
 async function loadAndRender() {
   try {
     const data = await loadDataFromGitHub();
@@ -469,6 +435,5 @@ async function loadAndRender() {
     alert("Nepodařilo se načíst data z GitHubu:\n" + e.message);
   }
 }
-
 loadAndRender();
 initSlider();
