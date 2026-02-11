@@ -121,6 +121,25 @@ function renderRoomsEditor(data) {
   });
 }
 
+// ---- pricing for admin ----
+function nameToRoomType(data, name) {
+  for (const r of data.rooms || []) {
+    for (const p of (r.people || [])) {
+      if (normalizeName(p) === name) return r.type === "kids" ? "kids" : "adult";
+    }
+  }
+  return "adult";
+}
+
+function shouldPayAmount(data, name) {
+  const total = Math.round(Number(data.totalCzk) || 0);
+  const { kids, adults } = countPeopleByType(data.rooms);
+  const shares = computeShares(total, adults, kids);
+  const t = nameToRoomType(data, name);
+  const raw = t === "kids" ? shares.kids : shares.adults;
+  return roundCzk(raw);
+}
+
 // ---- admin table ----
 function renderAdminTable() {
   const people = listParticipantsInOrder(state);
@@ -142,10 +161,13 @@ function renderAdminTable() {
     totalPaid += paid;
     totalRefunded += refunded;
 
+    const mustPay = shouldPayAmount(state, p.name);
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><button class="btn" data-sel="${p.name}" type="button">${p.name}</button></td>
       <td class="center">${p.room}</td>
+      <td class="center">${formatCzk(mustPay)}</td>
       <td class="center">${formatCzk(paid)}</td>
       <td class="center">${formatCzk(refunded)}</td>
     `;
@@ -177,8 +199,9 @@ function renderSelectedPanel() {
   }
 
   const meta = listParticipantsInOrder(state).find(x => x.name === selectedName);
+  const mustPay = shouldPayAmount(state, selectedName);
   selTitle.textContent = selectedName;
-  selMeta.textContent = meta ? meta.room : "—";
+  selMeta.textContent = (meta ? meta.room : "—") + ` · Má platit: ${formatCzk(mustPay)}`;
 
   if (!state.people[selectedName]) state.people[selectedName] = { payments: [], refunds: [] };
   const rec = state.people[selectedName];
@@ -337,4 +360,3 @@ if (inpAirNote) inpAirNote.value = state.airNote || "";
 renderRoomsEditor(state);
 renderAdminTable();
 renderSelectedPanel();
-
