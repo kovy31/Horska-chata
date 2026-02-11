@@ -1,11 +1,11 @@
 // assets/edit.js
+let state = defaultData();
+let selectedName = "";
 
-const editGrid = document.getElementById("editGrid");
-const btnLoad = document.getElementById("btnLoad");
-const btnSave = document.getElementById("btnSave");
-
+// dom
 const inpTotal = document.getElementById("inpTotal");
 const inpAccount = document.getElementById("inpAccount");
+const inpAirNote = document.getElementById("inpAirNote");
 const inpToken = document.getElementById("inpToken");
 
 const kpiPaid = document.getElementById("kpiPaid");
@@ -20,265 +20,260 @@ const selMeta = document.getElementById("selMeta");
 
 const payListAdmin = document.getElementById("payListAdmin");
 const refundListAdmin = document.getElementById("refundListAdmin");
-const btnAddPay = document.getElementById("btnAddPay");
-const btnAddRefund = document.getElementById("btnAddRefund");
 
+const suggestPay = document.getElementById("suggestPay");
 const suggestRefund = document.getElementById("suggestRefund");
 const suggestHint = document.getElementById("suggestHint");
 
-let state = defaultData();
-let selectedName = "";
+const btnAddPay = document.getElementById("btnAddPay");
+const btnAddRefund = document.getElementById("btnAddRefund");
+const btnLoad = document.getElementById("btnLoad");
+const btnSave = document.getElementById("btnSave");
 
-// ---- Rooms editor ----
-function migratePersonKey(oldName, newName) {
-  oldName = normalizeName(oldName);
-  newName = normalizeName(newName);
-  if (!oldName || !newName || oldName === newName) return;
-  if (!state.people) state.people = {};
-  if (state.people[oldName]) {
-    if (!state.people[newName]) state.people[newName] = state.people[oldName];
-    delete state.people[oldName];
+const editGrid = document.getElementById("editGrid");
+
+// ---- helpers ----
+function listParticipantsInOrder(data) {
+  const arr = [];
+  for (const r of data.rooms || []) {
+    for (const p of (r.people || [])) {
+      const name = normalizeName(p);
+      if (name) arr.push({ name, room: r.name || "—" });
+    }
+  }
+  const seen = new Set();
+  const out = [];
+  for (const x of arr) {
+    if (seen.has(x.name)) continue;
+    seen.add(x.name);
+    out.push(x);
+  }
+  out.sort((a, b) => a.name.localeCompare(b.name, "cs"));
+  return out;
+}
+
+function sumEntries(list) {
+  return (list || []).reduce((s, x) => s + (Math.round(Number(x.amount) || 0)), 0);
+}
+
+function cleanupEmptyEntries(rec) {
+  if (!rec) return;
+  rec.payments = (rec.payments || []).filter(x => Number(x.amount) > 0);
+  rec.refunds = (rec.refunds || []).filter(x => Number(x.amount) > 0);
+}
+
+function cleanupPeopleNotInRooms() {
+  const alive = new Set(listParticipantsInOrder(state).map(x => x.name));
+  for (const k of Object.keys(state.people || {})) {
+    if (!alive.has(k)) delete state.people[k];
   }
 }
 
+// ---- rooms editor ----
 function renderRoomsEditor(data) {
   editGrid.innerHTML = "";
-
-  for (const room of data.rooms) {
+  for (const r of data.rooms || []) {
     const card = document.createElement("div");
-    card.className = "card";
-
-    const fields = room.people.map((val, idx) => `
-      <div class="fieldRow">
-        <label class="label">${idx + 1}. osoba</label>
-        <input data-room="${room.id}" data-idx="${idx}" value="${(val||"").replace(/"/g,'&quot;')}" placeholder="Jméno" />
-      </div>
-    `).join("");
+    card.className = "roomEdit";
+    const slots = (r.people || []).map((p, idx) => {
+      const id = `${r.id}_${idx}`;
+      return `
+        <div class="slotRow">
+          <input data-room="${r.id}" data-idx="${idx}" id="${id}" type="text" placeholder="jméno" value="${(p || "").replace(/"/g, "&quot;")}" />
+          <button class="btn" data-clear="${id}" type="button">Smazat</button>
+        </div>
+      `;
+    }).join("");
 
     card.innerHTML = `
-      <div class="roomHead">
+      <div class="roomEditTop">
         <div>
-          <h2>${room.name}</h2>
-          <div class="subSmall">${room.type==="kids" ? "Dětský pokoj (sleva 25 % pro osoby 15+)" : "Pokoj s manželskou postelí"}</div>
+          <div class="roomEditName">${r.name || "Pokoj"}</div>
+          <div class="roomEditMeta">${r.type === "kids" ? "Dětský pokoj" : "Dvoulůžko"} · ${r.id}</div>
         </div>
-        <div class="subSmall">${room.people.length} místa</div>
       </div>
-      ${fields}
+      <div class="slots">${slots}</div>
     `;
 
     editGrid.appendChild(card);
   }
 
   editGrid.querySelectorAll("input[data-room]").forEach(inp => {
-    inp.addEventListener("focus", (e) => { e.target.dataset.prev = e.target.value; });
-
-    inp.addEventListener("input", (e) => {
-      const roomId = e.target.getAttribute("data-room");
-      const idx = Number(e.target.getAttribute("data-idx"));
-      const room = state.rooms.find(r => r.id === roomId);
-
-      const prev = e.target.dataset.prev || "";
-      const next = normalizeName(e.target.value);
-
-      room.people[idx] = next;
-      migratePersonKey(prev, next);
-      e.target.dataset.prev = next;
-
-      // just refresh the admin table + suggestion (safe)
+    inp.addEventListener("input", () => {
+      const rid = inp.getAttribute("data-room");
+      const idx = Number(inp.getAttribute("data-idx"));
+      const room = state.rooms.find(x => x.id === rid);
+      if (!room) return;
+      room.people[idx] = normalizeName(inp.value);
       renderAdminTable();
-      if (selectedName && !existsInRooms(selectedName)) {
-        selectedName = "";
-        renderSelectedPanel();
-      } else {
-        renderSelectedPanel();
-      }
+      if (selectedName) renderSelectedPanel();
+    });
+  });
+
+  editGrid.querySelectorAll("button[data-clear]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-clear");
+      const inp = document.getElementById(id);
+      if (!inp) return;
+      inp.value = "";
+      inp.dispatchEvent(new Event("input"));
     });
   });
 }
 
-function existsInRooms(name) {
-  const n = normalizeName(name);
-  if (!n) return false;
-  for (const room of state.rooms) {
-    for (const p of room.people) if (normalizeName(p) === n) return true;
-  }
-  return false;
-}
-
-// ---- Admin finance table ----
+// ---- admin table ----
 function renderAdminTable() {
-  // sync settings to state (do not rerender inputs while typing elsewhere)
-  const total = Number(inpTotal.value);
-  if (Number.isFinite(total) && total > 0) state.totalCzk = Math.round(total);
-  state.paymentAccount = (inpAccount.value || "").trim();
-
-  const ledger = computeFinanceLedger(state);
-
-  kpiPaid.textContent = formatCzk(ledger.totalPaid);
-  kpiRefunded.textContent = formatCzk(ledger.totalRefunded);
-  kpiSurplus.textContent = formatCzk(ledger.surplus);
-
+  const people = listParticipantsInOrder(state);
   adminBody.innerHTML = "";
-  if (ledger.rows.length === 0) {
+
+  if (!people.length) {
     adminEmpty.style.display = "block";
-    return;
+  } else {
+    adminEmpty.style.display = "none";
   }
-  adminEmpty.style.display = "none";
 
-  const rows = [...ledger.rows].sort((a, b) => a.name.localeCompare(b.name, "cs"));
+  let totalPaid = 0;
+  let totalRefunded = 0;
 
-  for (const r of rows) {
+  for (const p of people) {
+    const rec = state.people[p.name] || { payments: [], refunds: [] };
+    const paid = sumEntries(rec.payments);
+    const refunded = sumEntries(rec.refunds);
+    totalPaid += paid;
+    totalRefunded += refunded;
+
     const tr = document.createElement("tr");
-    tr.className = "clickRow" + (r.name === selectedName ? " activeRow" : "");
-    tr.setAttribute("data-name", r.name);
-
-    const status =
-      r.remainingToPay > 0 ? `Doplatit ${formatCzk(r.remainingToPay)}`
-      : (r.suggestedRefund > 0 ? `Vrátit ${formatCzk(r.suggestedRefund)}` : "Srovnáno");
-
     tr.innerHTML = `
-      <td><strong>${r.name}</strong>${r.isKid ? ` <span class="miniTag">sleva 25%</span>` : ""}</td>
-      <td class="center"><strong>${formatCzk(r.due)}</strong></td>
-      <td class="center">${formatCzk(r.paid)}</td>
-      <td class="center">${formatCzk(r.refunded)}</td>
-      <td class="center"><strong>${status}</strong></td>
+      <td><button class="btn" data-sel="${p.name}" type="button">${p.name}</button></td>
+      <td class="center">${p.room}</td>
+      <td class="center">${formatCzk(paid)}</td>
+      <td class="center">${formatCzk(refunded)}</td>
     `;
     adminBody.appendChild(tr);
   }
 
-  // row click
-  adminBody.querySelectorAll("tr[data-name]").forEach(tr => {
-    tr.addEventListener("click", () => {
-      selectedName = tr.getAttribute("data-name") || "";
+  const surplus = Math.max(0, totalPaid - Math.round(Number(state.totalCzk) || 0));
+  kpiPaid.textContent = formatCzk(totalPaid);
+  kpiRefunded.textContent = formatCzk(totalRefunded);
+  kpiSurplus.textContent = formatCzk(surplus);
+
+  adminBody.querySelectorAll("button[data-sel]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      selectedName = btn.getAttribute("data-sel") || "";
+      renderSelectedPanel();
+    });
+  });
+}
+
+// ---- selected panel ----
+function renderSelectedPanel() {
+  if (!selectedName) {
+    selTitle.textContent = "—";
+    selMeta.textContent = "Vyber jméno vlevo.";
+    payListAdmin.innerHTML = "";
+    refundListAdmin.innerHTML = "";
+    suggestHint.style.display = "none";
+    return;
+  }
+
+  const meta = listParticipantsInOrder(state).find(x => x.name === selectedName);
+  selTitle.textContent = selectedName;
+  selMeta.textContent = meta ? meta.room : "—";
+
+  if (!state.people[selectedName]) state.people[selectedName] = { payments: [], refunds: [] };
+  const rec = state.people[selectedName];
+
+  suggestHint.style.display = "block";
+  suggestHint.textContent = "Přidání položky nastaví dnešní datum – případně ho uprav níž.";
+
+  payListAdmin.innerHTML = renderHistoryList(rec.payments, "payments");
+  refundListAdmin.innerHTML = renderHistoryList(rec.refunds, "refunds");
+
+  bindHistoryButtons(rec);
+
+  suggestPay.value = "";
+  suggestRefund.value = "";
+}
+
+function renderHistoryList(list, kind) {
+  const arr = (list || []).slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  if (!arr.length) return `<div class="subSmall">—</div>`;
+  return arr.map((x, idx) => `
+    <div class="roomCard" style="margin-bottom:8px;">
+      <div class="roomTop">
+        <div>
+          <div class="roomName">${formatCzk(x.amount)}</div>
+          <div class="roomMeta">${x.date || "—"}</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn" data-edit="${kind}" data-idx="${idx}" type="button">Upravit</button>
+          <button class="btn" data-del="${kind}" data-idx="${idx}" type="button">Smazat</button>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function bindHistoryButtons(rec) {
+  document.querySelectorAll("button[data-del]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const kind = btn.getAttribute("data-del");
+      const idx = Number(btn.getAttribute("data-idx"));
+      if (!Number.isFinite(idx)) return;
+      if (!confirm("Smazat položku?")) return;
+      rec[kind].splice(idx, 1);
+      cleanupEmptyEntries(rec);
+      renderAdminTable();
+      renderSelectedPanel();
+    });
+  });
+
+  document.querySelectorAll("button[data-edit]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const kind = btn.getAttribute("data-edit");
+      const idx = Number(btn.getAttribute("data-idx"));
+      const item = rec[kind]?.[idx];
+      if (!item) return;
+
+      const amount = prompt("Částka (Kč):", String(item.amount || ""));
+      if (amount === null) return;
+      const a = Math.round(Number(amount) || 0);
+      if (!(a > 0)) return alert("Neplatná částka.");
+
+      const date = prompt("Datum (YYYY-MM-DD):", item.date || todayISO());
+      if (date === null) return;
+      const d = String(date || "").trim() || todayISO();
+
+      item.amount = a;
+      item.date = d;
+
+      cleanupEmptyEntries(rec);
       renderAdminTable();
       renderSelectedPanel();
     });
   });
 }
 
-// ---- Selected person editor panel ----
-function entryRowHTML(kind, idx, entry) {
-  // kind = "pay" or "ref"
-  const amount = entry?.amount ?? 0;
-  const date = entry?.date ?? "";
-  return `
-    <div class="entryRow">
-      <input class="entryAmount" type="number" min="0" step="1"
-        data-kind="${kind}" data-idx="${idx}" data-field="amount"
-        value="${String(amount)}" />
-      <input class="entryDate" type="date"
-        data-kind="${kind}" data-idx="${idx}" data-field="date"
-        value="${date}" />
-      <button class="iconBtnSmall" type="button" data-del="${kind}" data-idx="${idx}" aria-label="Smazat">✕</button>
-    </div>
-  `;
-}
-
-function renderSelectedPanel() {
-  const ledger = computeFinanceLedger(state);
-  const row = ledger.rows.find(r => r.name === selectedName);
-
-  if (!selectedName || !row) {
-    selTitle.textContent = "Vyber člověka v tabulce výše…";
-    selMeta.textContent = "";
-    payListAdmin.innerHTML = "";
-    refundListAdmin.innerHTML = "";
-    btnAddPay.disabled = true;
-    btnAddRefund.disabled = true;
-    suggestRefund.textContent = "—";
-    suggestHint.textContent = "";
-    return;
-  }
-
-  // ensure record exists
-  const rec = ensurePersonRecord(state, selectedName);
-
-  selTitle.textContent = selectedName;
-  selMeta.textContent =
-    `${row.roomName}${row.isKid ? " · sleva 25 % (osoba 15+)" : ""} · Má platit: ${formatCzk(row.due)} · Zbývá doplatit: ${formatCzk(row.remainingToPay)}`;
-
-  btnAddPay.disabled = false;
-  btnAddRefund.disabled = false;
-
-  // suggested refund
-  suggestRefund.textContent = formatCzk(row.suggestedRefund || 0);
-  suggestHint.textContent = row.suggestedRefund > 0
-    ? "Návrh vrácení teď (podle dostupného přebytku)."
-    : "Momentálně není co vracet (nebo ještě není přebytek).";
-
-  // lists
-  const pays = (rec.payments || []);
-  const refs = (rec.refunds || []);
-
-  payListAdmin.innerHTML =
-    pays.length ? pays.map((e, i) => entryRowHTML("pay", i, e)).join("") : `<div class="subSmall">Zatím žádná platba.</div>`;
-
-  refundListAdmin.innerHTML =
-    refs.length ? refs.map((e, i) => entryRowHTML("ref", i, e)).join("") : `<div class="subSmall">Zatím žádná vratka.</div>`;
-
-  // listeners: inputs (IMPORTANT: no full rerender while typing)
-  function bindEntries(container, kind) {
-    container.querySelectorAll("input[data-kind]").forEach(inp => {
-      // Update state on blur/change only (prevents jumping while typing)
-      const isDate = inp.getAttribute("data-field") === "date";
-      const evt = isDate ? "change" : "blur";
-      inp.addEventListener(evt, () => {
-        const idx = Number(inp.getAttribute("data-idx"));
-        const field = inp.getAttribute("data-field");
-        const list = kind === "pay" ? rec.payments : rec.refunds;
-        if (!list[idx]) return;
-
-        if (field === "amount") {
-          list[idx].amount = clampInt(inp.value, 0, 1_000_000_000);
-          inp.value = String(list[idx].amount);
-        } else {
-          list[idx].date = String(inp.value || "").trim();
-        }
-
-        cleanupEmptyEntries(rec);
-        renderAdminTable();
-        renderSelectedPanel(); // OK because blur/change, not every keystroke
-      });
-    });
-
-    container.querySelectorAll("button[data-del]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const idx = Number(btn.getAttribute("data-idx"));
-        const list = kind === "pay" ? rec.payments : rec.refunds;
-        list.splice(idx, 1);
-        cleanupEmptyEntries(rec);
-        renderAdminTable();
-        renderSelectedPanel();
-      });
-    });
-  }
-
-  bindEntries(payListAdmin, "pay");
-  bindEntries(refundListAdmin, "ref");
-}
-
-function cleanupEmptyEntries(rec) {
-  rec.payments = (rec.payments || []).filter(x => (Number(x.amount)||0) > 0 || (x.date||"").trim());
-  rec.refunds = (rec.refunds || []).filter(x => (Number(x.amount)||0) > 0 || (x.date||"").trim());
-  // Normalize
-  rec.payments = rec.payments.map(x => ({ amount: clampInt(x.amount,0,1_000_000_000), date: (x.date||"").trim() }));
-  rec.refunds = rec.refunds.map(x => ({ amount: clampInt(x.amount,0,1_000_000_000), date: (x.date||"").trim() }));
-  // Remove zero-amount entries
-  rec.payments = rec.payments.filter(x => x.amount > 0);
-  rec.refunds = rec.refunds.filter(x => x.amount > 0);
-}
-
+// ---- add quick entries ----
 btnAddPay.addEventListener("click", () => {
-  if (!selectedName) return;
-  const rec = ensurePersonRecord(state, selectedName);
-  rec.payments.push({ amount: 0, date: todayISO() });
+  if (!selectedName) return alert("Nejdřív vyber jméno.");
+  const a = Math.round(Number(suggestPay.value) || 0);
+  if (!(a > 0)) return alert("Neplatná částka.");
+  const rec = state.people[selectedName] || (state.people[selectedName] = { payments: [], refunds: [] });
+  rec.payments.push({ amount: a, date: todayISO() });
+  cleanupEmptyEntries(rec);
+  renderAdminTable();
   renderSelectedPanel();
 });
 
 btnAddRefund.addEventListener("click", () => {
-  if (!selectedName) return;
-  const rec = ensurePersonRecord(state, selectedName);
-  rec.refunds.push({ amount: 0, date: todayISO() });
+  if (!selectedName) return alert("Nejdřív vyber jméno.");
+  const a = Math.round(Number(suggestRefund.value) || 0);
+  if (!(a > 0)) return alert("Neplatná částka.");
+  const rec = state.people[selectedName] || (state.people[selectedName] = { payments: [], refunds: [] });
+  rec.refunds.push({ amount: a, date: todayISO() });
+  cleanupEmptyEntries(rec);
+  renderAdminTable();
   renderSelectedPanel();
 });
 
@@ -290,6 +285,7 @@ async function loadFromGitHub() {
     state = await loadDataFromGitHub();
     inpTotal.value = String(state.totalCzk);
     inpAccount.value = state.paymentAccount || "";
+    if (inpAirNote) inpAirNote.value = state.airNote || "";
     selectedName = "";
     renderRoomsEditor(state);
     renderAdminTable();
@@ -302,13 +298,6 @@ async function loadFromGitHub() {
   }
 }
 
-function cleanupPeopleNotInRooms() {
-  const alive = new Set(listParticipantsInOrder(state).map(x => x.name));
-  for (const k of Object.keys(state.people || {})) {
-    if (!alive.has(k)) delete state.people[k];
-  }
-}
-
 async function saveToGitHubNow() {
   const token = (inpToken.value || "").trim();
   if (!token) return alert("Pro uložení zadej GitHub token.");
@@ -318,10 +307,9 @@ async function saveToGitHubNow() {
 
   state.totalCzk = Math.round(total);
   state.paymentAccount = (inpAccount.value || "").trim();
+  state.airNote = (inpAirNote?.value || "").trim();
 
-  // cleanup
   cleanupPeopleNotInRooms();
-  // normalize all entries
   for (const name of Object.keys(state.people || {})) {
     cleanupEmptyEntries(state.people[name]);
   }
@@ -345,6 +333,7 @@ btnSave.addEventListener("click", saveToGitHubNow);
 // init
 inpTotal.value = String(state.totalCzk);
 inpAccount.value = state.paymentAccount || "";
+if (inpAirNote) inpAirNote.value = state.airNote || "";
 renderRoomsEditor(state);
 renderAdminTable();
 renderSelectedPanel();
