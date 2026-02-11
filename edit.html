@@ -28,11 +28,16 @@
           <input id="inpAccount" type="text" placeholder="např. 123456789/0100" />
           <div class="subSmall">Zobrazuje se ve financích na hlavní stránce.</div>
         </div>
+        <div>
+          <label class="label">Text u ubytování (volitelné)</label>
+          <textarea id="inpAirNote" rows="3" placeholder="Např. info k check-inu, rozdělení, poznámka…"></textarea>
+          <div class="subSmall">Zobrazuje se nad Airbnb kartou na hlavní stránce.</div>
+        </div>
 
         <div>
           <label class="label">GitHub token (pro uložení)</label>
-          <input id="inpToken" type="password" placeholder="Fine-grained PAT (Issues: Read/Write)" />
-          <div class="subSmall">Token se nikam neukládá do repa. Slouží jen pro PATCH do Issue.</div>
+          <input id="inpToken" type="password" placeholder="Fine-grained PAT" />
+          <div class="subSmall">Token se neukládá – zadává se jen lokálně v prohlížeči.</div>
         </div>
       </div>
 
@@ -42,85 +47,94 @@
       </div>
     </div>
 
-    <div class="twoCol">
-      <div>
-        <h2 class="h2">Pokoje</h2>
-        <div class="sub">Prvních 14 osob bez slevy. Osoby 15+ (v dětském pokoji) mají slevu 25 %.</div>
-        <div class="grid" id="editGrid"></div>
+    <div class="section">
+      <div class="sectionHead">
+        <div>
+          <div class="sectionTitle">Pokoje</div>
+          <div class="sectionSub">Vyplň jména lidí v pokojích. Prázdné pole = nikdo.</div>
+        </div>
       </div>
 
-      <div>
-        <h2 class="h2">Finance – správa plateb a vratek</h2>
-        <div class="sub">Klikni na jméno a uprav platby / vratky. Datum lze ručně měnit.</div>
+      <div id="editGrid" class="editGrid"></div>
+    </div>
 
-        <div class="kpi smallKpi">
-          <div class="item">
-            <div class="label">Celkem zaplaceno</div>
-            <div class="value" id="kpiPaid">—</div>
-          </div>
-          <div class="item">
-            <div class="label">Celkem vráceno</div>
-            <div class="value" id="kpiRefunded">—</div>
-          </div>
-          <div class="item">
-            <div class="label">Přebytek (k vrácení)</div>
-            <div class="value" id="kpiSurplus">—</div>
-          </div>
+    <div class="section">
+      <div class="sectionHead">
+        <div>
+          <div class="sectionTitle">Platby & vratky</div>
+          <div class="sectionSub">Klikni na jméno a zapiš platby / vratky jako historii.</div>
         </div>
 
-        <div class="tableWrap">
-          <div class="desktopTable" style="display:block;">
-            <table class="table" id="adminTable">
-              <thead>
-                <tr>
-                  <th>Jméno</th>
-                  <th>Má platit</th>
-                  <th>Zaplaceno</th>
-                  <th>Vráceno</th>
-                  <th>Stav</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+        <div class="kpiMini">
+          <div class="kpiMiniItem">
+            <div class="kpiMiniLabel">Zaplaceno</div>
+            <div class="kpiMiniValue" id="kpiPaid">—</div>
           </div>
-          <div class="subSmall" id="adminEmpty" style="display:none; margin-top:10px;">
-            Zatím nikdo není zapsaný v pokojích.
+          <div class="kpiMiniItem">
+            <div class="kpiMiniLabel">Vráceno</div>
+            <div class="kpiMiniValue" id="kpiRefunded">—</div>
+          </div>
+          <div class="kpiMiniItem">
+            <div class="kpiMiniLabel">Přebytek</div>
+            <div class="kpiMiniValue" id="kpiSurplus">—</div>
           </div>
         </div>
+      </div>
 
-        <div class="panel" style="margin-top:12px;">
-          <div class="sub" style="margin-top:0;">
-            <strong id="selTitle">Vyber člověka v tabulce výše…</strong>
-          </div>
-
-          <div id="selMeta" class="subSmall" style="margin-top:6px;"></div>
-
-          <div class="threeCol" style="margin-top:10px;">
-            <div class="miniCard">
-              <div class="label">Platby</div>
-              <div id="payListAdmin"></div>
-              <button class="btn tiny" id="btnAddPay" type="button" disabled>+ Přidat platbu</button>
-            </div>
-
-            <div class="miniCard">
-              <div class="label">Vratky</div>
-              <div id="refundListAdmin"></div>
-              <button class="btn tiny" id="btnAddRefund" type="button" disabled>+ Přidat vratku</button>
-            </div>
-
-            <div class="miniCard">
-              <div class="label">Návrh vrácení</div>
-              <div class="subSmall">Automaticky: vrací se jen těm, kdo už zaplatili.</div>
-              <div class="bigNumber" id="suggestRefund">—</div>
-              <div class="subSmall" id="suggestHint"></div>
-            </div>
-          </div>
-
-          <div class="subSmall" style="margin-top:10px;">
-            Tip: datum piš ve formátu YYYY-MM-DD (např. 2026-02-11).
-          </div>
+      <div class="adminLayout">
+        <div class="adminLeft">
+          <table class="table" id="adminTable">
+            <thead>
+              <tr>
+                <th>Jméno</th>
+                <th>Pokoj</th>
+                <th>Zaplaceno</th>
+                <th>Vráceno</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="subSmall" id="adminEmpty" style="display:none; margin-top:10px;">Zatím nejsou vyplněná žádná jména v pokojích.</div>
         </div>
 
+        <div class="adminRight">
+          <div class="panel small">
+            <div class="panelTitle" id="selTitle">—</div>
+            <div class="panelSub" id="selMeta">—</div>
+
+            <div class="subSmall" id="suggestHint" style="margin:10px 0 6px 0; display:none;"></div>
+
+            <div class="twoCols">
+              <div>
+                <div class="label">Přidat platbu</div>
+                <div class="row">
+                  <input id="suggestPay" type="number" min="0" step="1" placeholder="částka" />
+                  <button class="btn" id="btnAddPay">Přidat</button>
+                </div>
+              </div>
+
+              <div>
+                <div class="label">Přidat vratku</div>
+                <div class="row">
+                  <input id="suggestRefund" type="number" min="0" step="1" placeholder="částka" />
+                  <button class="btn" id="btnAddRefund">Přidat</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="subSmall" style="margin-top:12px;">Datum se nastaví na dnešek. V historii pak můžeš upravit.</div>
+
+            <div class="hr"></div>
+
+            <div class="label" style="margin-bottom:6px;">Historie plateb</div>
+            <div id="payListAdmin"></div>
+
+            <div class="hr"></div>
+
+            <div class="label" style="margin-bottom:6px;">Historie vratek</div>
+            <div id="refundListAdmin"></div>
+          </div>
+        </div>
       </div>
     </div>
 
