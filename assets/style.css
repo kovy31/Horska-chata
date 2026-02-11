@@ -47,6 +47,7 @@ h1{ margin:0; font-size:22px; }
   border: 1px solid var(--line);
   background: rgba(0,0,0,.18);
 }
+
 .sectionHead{
   display:flex;
   align-items:flex-start;
@@ -70,7 +71,7 @@ h1{ margin:0; font-size:22px; }
 
 .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 
-/* Payment instruction box */
+/* Payment box */
 .payBox{
   margin-top: 12px;
   padding: 12px;
@@ -226,6 +227,8 @@ h1{ margin:0; font-size:22px; }
 }
 .kpi .label{ color:var(--muted); font-size:12px; }
 .kpi .value{ margin-top:4px; font-size:18px; font-weight:900; }
+.smallKpi{ grid-template-columns: 1fr; }
+@media (min-width: 900px){ .smallKpi{ grid-template-columns: 1fr 1fr 1fr; } }
 
 /* Details */
 .details{
@@ -263,6 +266,8 @@ h1{ margin:0; font-size:22px; }
 }
 .table th{ color:var(--muted); text-align:left; }
 
+.table td.center, .table th.center{ text-align:center; }
+
 .desktopTable{ display:none; }
 .mobileList{ display:block; }
 @media (min-width:700px){
@@ -270,16 +275,41 @@ h1{ margin:0; font-size:22px; }
   .mobileList{ display:none; }
 }
 
-/* 6 columns now (includes QR) */
 #payTable{ table-layout: fixed; }
-#payTable th:nth-child(1), #payTable td:nth-child(1){ width: 16.66%; }
-#payTable th:nth-child(2), #payTable td:nth-child(2){ width: 16.66%; }
-#payTable th:nth-child(3), #payTable td:nth-child(3){ width: 16.66%; text-align:center; white-space:nowrap; }
-#payTable th:nth-child(4), #payTable td:nth-child(4){ width: 16.66%; text-align:center; white-space:nowrap; }
-#payTable th:nth-child(5), #payTable td:nth-child(5){ width: 16.66%; text-align:center; white-space:nowrap; }
-#payTable th:nth-child(6), #payTable td:nth-child(6){ width: 16.66%; text-align:center; white-space:nowrap; }
+#payTable th:nth-child(1), #payTable td:nth-child(1){ width: 20%; }
+#payTable th:nth-child(2), #payTable td:nth-child(2){ width: 20%; }
+#payTable th:nth-child(3), #payTable td:nth-child(3){ width: 16%; text-align:center; white-space:nowrap; }
+#payTable th:nth-child(4), #payTable td:nth-child(4){ width: 16%; text-align:center; white-space:nowrap; }
+#payTable th:nth-child(5), #payTable td:nth-child(5){ width: 16%; text-align:center; white-space:nowrap; }
+#payTable th:nth-child(6), #payTable td:nth-child(6){ width: 12%; text-align:center; white-space:nowrap; }
 
-/* Buttons */
+/* Panel + inputs */
+.panel{
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(0,0,0,.18);
+}
+.panelGrid{
+  display:grid;
+  gap:12px;
+}
+@media (min-width: 900px){
+  .panelGrid{ grid-template-columns: 1fr 1fr 1fr; }
+}
+.label{ display:block; font-weight: 900; font-size: 12px; margin-bottom: 6px; color: var(--muted); }
+
+input{
+  width:100%;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background: rgba(0,0,0,.25);
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.btnRow{ display:flex; gap:10px; margin-top: 12px; flex-wrap:wrap; }
 .btn{
   border-radius:12px;
   border:1px solid var(--line);
@@ -296,6 +326,89 @@ h1{ margin:0; font-size:22px; }
   padding: 7px 10px;
   font-size: 12px;
   border-radius: 10px;
+}
+
+.twoCol{
+  display:grid;
+  gap:14px;
+  margin-top: 14px;
+}
+@media (min-width: 1000px){
+  .twoCol{ grid-template-columns: 1.2fr 1fr; align-items: start; }
+}
+
+.fieldRow{ margin-top: 10px; }
+
+/* Admin table row click */
+.clickRow{ cursor:pointer; }
+.activeRow{ background: rgba(123,220,255,.08); }
+
+/* Small tag */
+.miniTag{
+  display:inline-block;
+  margin-left:6px;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.25);
+  font-size:11px;
+  font-weight:900;
+  color: var(--muted);
+}
+
+/* Selected editor layout */
+.threeCol{
+  display:grid;
+  gap:12px;
+}
+@media (min-width: 1000px){
+  .threeCol{ grid-template-columns: 1fr 1fr 1fr; }
+}
+.miniCard{
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(0,0,0,.22);
+}
+.bigNumber{
+  margin-top:10px;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.entryRow{
+  display:grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap:8px;
+  align-items:center;
+  margin-top: 8px;
+}
+.entryAmount{ min-width: 0; }
+.entryDate{ min-width: 0; }
+
+.iconBtnSmall{
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(0,0,0,.25);
+  color: var(--text);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+/* tiny info icon button */
+.iconTiny{
+  margin-left:6px;
+  border:1px solid rgba(255,255,255,.15);
+  background: rgba(0,0,0,.25);
+  color: var(--text);
+  border-radius: 999px;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
 }
 
 /* Modal */
@@ -315,7 +428,7 @@ h1{ margin:0; font-size:22px; }
 
 .modalCard{
   position:relative;
-  max-width: 420px;
+  max-width: 440px;
   margin: 8vh auto 0;
   padding: 14px;
   border-radius: 16px;
@@ -355,6 +468,20 @@ h1{ margin:0; font-size:22px; }
   background: #ffffff;
   border: 1px solid rgba(0,0,0,.12);
 }
-.qrBox canvas, .qrBox img{
-  display:block;
+.qrBox canvas, .qrBox img{ display:block; }
+
+.infoBody{
+  margin-top: 14px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.25);
 }
+.infoRow{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 0;
+  border-top:1px solid rgba(255,255,255,.06);
+}
+.infoRow:first-child{ border-top:none; }
