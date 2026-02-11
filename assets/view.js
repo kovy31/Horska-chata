@@ -254,23 +254,34 @@ function renderRooms(data) {
 
   const total = Math.round(Number(data.totalCzk) || 0);
 
+  // count per type for the stat line
+  let doubleUsed = 0, doubleCap = 0, kidsUsed = 0, kidsCap = 0;
   for (const r of data.rooms || []) {
-    const roomType = r.type === "kids" ? "kids" : "adult";
+    const ppl = (r.people || []);
+    const filled = ppl.filter(p => normalizeName(p)).length;
+    if (r.type === "kids") { kidsUsed += filled; kidsCap += ppl.length; }
+    else { doubleUsed += filled; doubleCap += ppl.length; }
+  }
+
+  for (const r of data.rooms || []) {
+    const rType = r.type === "kids" ? "kids" : "adult";
     const people = (r.people || []).map(x => normalizeName(x));
+    const roomFilled = people.filter(Boolean).length;
 
     const bedsHtml = people.map((p, i) => {
       const label = priceForFuturePosition(i);
 
       if (p) {
         // confirmed person -> show current computed price for their room type
-        const cur = priceForRoomType(total, data.rooms, r.type === "kids" ? "kids" : "adult", false);
+        const cur = priceForRoomType(total, data.rooms, rType, false);
         const priceText = formatCzk(cur.price);
         const hint = (cur.shares.mode === "kids25" && r.type === "kids")
-          ? `Cena: ${priceText} · sleva dětský pokoj`
-          : `Cena: ${priceText}`;
+          ? `${priceText} · sleva dětský pokoj`
+          : priceText;
 
         return `
-          <div class="bed">
+          <div class="bed bed--filled">
+            <div class="bedIcon">&#10003;</div>
             <div>
               <div class="bedName">${p}</div>
               <div class="bedHint">${hint} · Místo ${label}</div>
@@ -279,23 +290,27 @@ function renderRooms(data) {
       }
 
       // empty slot -> show estimate if someone joins this slot
-      const hypo = priceForRoomType(total, data.rooms, r.type === "kids" ? "kids" : "adult", true);
+      const hypo = priceForRoomType(total, data.rooms, rType, true);
       const est = formatCzk(hypo.price);
       const extra =
         hypo.shares.mode === "min10"
-          ? "minimum (celkem/10)"
+          ? "min. cena (celkem÷10)"
           : hypo.shares.mode === "divide"
             ? `děleno ${hypo.totalPeople} lidmi`
-            : (r.type === "kids" ? "sleva dětský pokoj -25%" : `od ${hypo.totalPeople} lidí`);
+            : (r.type === "kids" ? "sleva dětský pokoj −25 %" : `děleno ${hypo.totalPeople} lidmi`);
 
       return `
-        <div class="bed">
+        <div class="bed bed--empty">
+          <div class="bedIcon bedIconEmpty">?</div>
           <div>
-            <div class="bedName">—</div>
+            <div class="bedName bedNameEmpty">zatím volno</div>
             <div class="bedHint">Odhad: <b>${est}</b> · ${extra} · Místo ${label}</div>
           </div>
         </div>`;
     }).join("");
+
+    const typeLabel = r.type === "kids" ? "Dětský pokoj (nižší komfort)" : "Dvoulůžko (standard)";
+    const occupancy = `${roomFilled}/${people.length}`;
 
     const card = document.createElement("div");
     card.className = "roomCard";
@@ -303,8 +318,9 @@ function renderRooms(data) {
       <div class="roomTop">
         <div>
           <div class="roomName">${r.name || "Pokoj"}</div>
-          <div class="roomMeta">${r.type === "kids" ? "Dětský pokoj (horší úroveň)" : "Dvoulůžko"}</div>
+          <div class="roomMeta">${typeLabel}</div>
         </div>
+        <span class="roomOccupancy">${occupancy}</span>
       </div>
       <div class="beds">${bedsHtml}</div>
     `;
@@ -446,9 +462,10 @@ function renderFinance(data) {
     const mustPay = shouldPayFor(name);
 
     const delta = paidOne - mustPay; // + means overpaid
+    const deltaClass = delta === 0 ? "settlement-ok" : (delta > 0 ? "settlement-over" : "settlement-under");
     const deltaText =
       delta === 0 ? "OK" :
-        (delta > 0 ? `+${formatCzk(delta)}` : `-${formatCzk(Math.abs(delta))}`);
+        (delta > 0 ? `+${formatCzk(delta)}` : `${formatCzk(Math.abs(delta))}`);
 
     // QR if needs to pay
     let qrBtn = "";
@@ -458,7 +475,7 @@ function renderFinance(data) {
         const iban = czAccountToIban(parsed.prefix, parsed.number, parsed.bank);
         const toPay = Math.abs(delta);
         const spd = buildSpd({ iban, amountCzk: toPay, msg: name });
-        qrBtn = `<button class="btn" data-qr="1" data-name="${name}" data-amount="${toPay}" data-spd="${spd}">QR</button>`;
+        qrBtn = `<button class="btn tiny" data-qr="1" data-name="${name}" data-amount="${toPay}" data-spd="${spd}">QR</button>`;
       }
     }
 
@@ -468,27 +485,28 @@ function renderFinance(data) {
       <td class="center">${room}</td>
       <td class="center">${formatCzk(mustPay)}</td>
       <td class="center">${formatCzk(paidOne)}</td>
-      <td class="center"><button class="btn" data-info="1" data-name="${name}">${deltaText}</button></td>
+      <td class="center"><button class="btn tiny ${deltaClass}" data-info="1" data-name="${name}">${deltaText}</button></td>
       <td class="center">${qrBtn || "—"}</td>
     `;
     payTableBody.appendChild(tr);
 
     // mobile card
     const div = document.createElement("div");
-    div.className = "roomCard";
+    div.className = "mobileCard";
     div.innerHTML = `
-      <div class="roomTop">
+      <div class="mobileCardHead">
         <div>
-          <div class="roomName">${name}</div>
-          <div class="roomMeta">${room}</div>
+          <div class="mobileCardName">${name}</div>
+          <div class="mobileCardMeta">${room}</div>
         </div>
-        <div class="roomName">${deltaText}</div>
+        <span class="btn tiny ${deltaClass}" data-info="1" data-name="${name}">${deltaText}</span>
       </div>
-      <div class="subSmall" style="margin-top:8px;">
-        Má platit: <b>${formatCzk(mustPay)}</b> · Zaplaceno: <b>${formatCzk(paidOne)}</b>
+      <div class="mobileCardBody">
+        <span>Má platit: <b>${formatCzk(mustPay)}</b></span>
+        <span>Zaplaceno: <b>${formatCzk(paidOne)}</b></span>
       </div>
-      <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
-        <button class="btn" data-info="1" data-name="${name}">Detail</button>
+      <div class="mobileCardActions">
+        <button class="btn tiny" data-info="1" data-name="${name}">Detail</button>
         ${qrBtn || ""}
       </div>
     `;
@@ -502,18 +520,27 @@ function renderFinance(data) {
       const rec = data.people?.[name] || { payments: [], refunds: [] };
 
       const p = (rec.payments || [])
-        .map(x => `<li>${formatCzk(x.amount)} · ${x.date || "—"}</li>`)
-        .join("") || "<li>—</li>";
+        .map(x => `<li>${formatCzk(x.amount)} <span class="modalDate">${x.date || "—"}</span></li>`)
+        .join("") || "<li class='emptyNote'>Žádné platby</li>";
 
       const r = (rec.refunds || [])
-        .map(x => `<li>${formatCzk(x.amount)} · ${x.date || "—"}</li>`)
-        .join("") || "<li>—</li>";
+        .map(x => `<li>${formatCzk(x.amount)} <span class="modalDate">${x.date || "—"}</span></li>`)
+        .join("") || "<li class='emptyNote'>Žádné vratky</li>";
 
       const mustPay = shouldPayFor(name);
+      const paidOne = (rec.payments || []).reduce((s, x) => s + (Math.round(Number(x.amount) || 0)), 0);
+      const delta = paidOne - mustPay;
+      const deltaClass = delta === 0 ? "settlement-ok" : (delta > 0 ? "settlement-over" : "settlement-under");
+      const deltaText = delta === 0 ? "OK" : (delta > 0 ? `+${formatCzk(delta)}` : `${formatCzk(Math.abs(delta))}`);
+
       openInfoModal("Vyrovnání", name, `
-        <div><b>Má platit:</b> ${formatCzk(mustPay)}</div>
-        <div style="margin-top:10px;"><b>Platby</b><ul>${p}</ul></div>
-        <div style="margin-top:10px;"><b>Vratky</b><ul>${r}</ul></div>
+        <div class="infoKpi">
+          <div class="infoKpiItem"><span class="infoKpiLabel">Má platit</span><span class="infoKpiValue">${formatCzk(mustPay)}</span></div>
+          <div class="infoKpiItem"><span class="infoKpiLabel">Zaplaceno</span><span class="infoKpiValue">${formatCzk(paidOne)}</span></div>
+          <div class="infoKpiItem"><span class="infoKpiLabel">Vyrovnání</span><span class="infoKpiValue ${deltaClass}">${deltaText}</span></div>
+        </div>
+        <div class="infoSection"><b>Platby</b><ul>${p}</ul></div>
+        <div class="infoSection"><b>Vratky</b><ul>${r}</ul></div>
       `);
     });
   });
@@ -531,3 +558,70 @@ function renderFinance(data) {
     });
   });
 }
+
+// -------- Airbnb slider --------
+function initSlider() {
+  if (!slideImg || !dotsWrap || AIRBNB_IMAGES.length < 2) return;
+
+  let current = 0;
+
+  // create dots
+  dotsWrap.innerHTML = AIRBNB_IMAGES.map((_, i) =>
+    `<span class="dot${i === 0 ? " active" : ""}" data-slide="${i}"></span>`
+  ).join("");
+
+  function goTo(idx) {
+    current = ((idx % AIRBNB_IMAGES.length) + AIRBNB_IMAGES.length) % AIRBNB_IMAGES.length;
+    slideImg.src = AIRBNB_IMAGES[current];
+    dotsWrap.querySelectorAll(".dot").forEach((d, i) => {
+      d.classList.toggle("active", i === current);
+    });
+  }
+
+  // click dots
+  dotsWrap.addEventListener("click", (e) => {
+    const idx = e.target.dataset?.slide;
+    if (idx != null) goTo(Number(idx));
+  });
+
+  // auto-rotate
+  let timer = setInterval(() => goTo(current + 1), SLIDE_MS);
+
+  // pause on hover
+  const wrap = slideImg.closest(".airImgWrap");
+  if (wrap) {
+    wrap.addEventListener("mouseenter", () => clearInterval(timer));
+    wrap.addEventListener("mouseleave", () => {
+      clearInterval(timer);
+      timer = setInterval(() => goTo(current + 1), SLIDE_MS);
+    });
+  }
+}
+
+// -------- INITIALIZATION --------
+(async function init() {
+  // show loading state
+  elRoomsGrid.innerHTML = '<div class="loadingMsg">Načítám data…</div>';
+  elWhoChips.innerHTML = '<div class="loadingMsg">Načítám…</div>';
+
+  // start slider immediately (doesn't need data)
+  initSlider();
+
+  try {
+    const data = await loadDataFromGitHub();
+
+    // airNote
+    if (data.airNote) {
+      elAirNote.innerHTML = data.airNote;
+      elAirNote.style.display = "block";
+    }
+
+    renderWhoGoes(data);
+    renderRooms(data);
+    renderFinance(data);
+    ensureAirHousingLayout();
+  } catch (e) {
+    console.error("Failed to load data:", e);
+    elRoomsGrid.innerHTML = '<div class="loadingMsg" style="color:var(--bad)">Nepodařilo se načíst data. Zkuste obnovit stránku.</div>';
+  }
+})();
