@@ -26,8 +26,6 @@ const elPayAccount = document.getElementById("payAccount");
 
 // KPI
 const elTotal = document.getElementById("kpiTotal");
-const elUnitFull = document.getElementById("kpiUnitFull");
-const elUnitKid = document.getElementById("kpiUnitKid");
 const elPaid = document.getElementById("kpiPaid");
 const elNeed = document.getElementById("kpiNeed");
 const elSurplus = document.getElementById("kpiSurplus");
@@ -51,7 +49,6 @@ const qrClose = document.getElementById("qrClose");
 const qrSub = document.getElementById("qrSub");
 const qrBox = document.getElementById("qrBox");
 const qrDownload = document.getElementById("qrDownload");
-const qrCopy = document.getElementById("qrCopy");
 
 let lastSpd = "";
 
@@ -88,15 +85,6 @@ function closeQrModal() {
 qrClose?.addEventListener("click", closeQrModal);
 qrModal?.addEventListener("click", (e) => {
   if (e.target?.dataset?.close) closeQrModal();
-});
-qrCopy?.addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(lastSpd || "");
-    qrCopy.textContent = "Zkopírováno ✓";
-    setTimeout(() => (qrCopy.textContent = "Zkopírovat SPD"), 1200);
-  } catch {
-    alert("Nepodařilo se zkopírovat.");
-  }
 });
 qrDownload?.addEventListener("click", () => {
   const canvas = qrBox.querySelector("canvas");
@@ -161,11 +149,10 @@ function renderWhoGoes(data) {
 }
 
 /**
- * Spočítá cenu pro "nového člověka", který bude v pořadí `futureIndex` (1-based).
- * Pravidla:
- * - prvních 14 osob = plná (váha 1.0)
- * - 15+ osoba = sleva/komfort (váha 0.75)
- * - minimální dělení je 10 (rezervace od 10)
+ * Cena pro "příštího člověka" podle pořadí (1-based):
+ * - 1–14: váha 1.00
+ * - 15+: váha 0.75
+ * - minimálně se dělí 10 (rezervace od 10)
  */
 function priceForFuturePosition(totalCzk, futureIndex) {
   const idx = Math.max(1, Math.floor(futureIndex));
@@ -185,13 +172,11 @@ function priceForFuturePosition(totalCzk, futureIndex) {
 function renderRooms(data) {
   elRoomsGrid.innerHTML = "";
 
-  // pro obsazené osoby chceme dál ukazovat jejich "má platit" podle computeDueSplit
   const split = computeDueSplit(data);
   const dueByName = new Map(split.rows.map(r => [r.name, r.due]));
   const isKidByName = new Map(split.rows.map(r => [r.name, r.isKid]));
 
   const alreadyFilled = filledBeds(data);
-  // futureCounter = pořadí budoucího příchozího (začíná aktuálním počtem)
   let futureCounter = alreadyFilled;
 
   for (const room of data.rooms) {
@@ -219,36 +204,34 @@ function renderRooms(data) {
 
     const list = card.querySelector(".list");
 
-    // projdeme postele v pořadí a pro prázdné dopočítáme cenu podle pořadí budoucího člověka
     for (let i = 0; i < capacity; i++) {
       const name = (room.people[i] || "").trim();
-
       const row = document.createElement("div");
       row.className = "row";
 
       if (name) {
-        const due = dueByName.get(name) ?? 0;
+        // ✅ U obsazených NEukazujeme cenu (může být jen půlka pokoje)
         const tag = isKidByName.get(name) ? " · sleva 25%" : "";
-
         row.innerHTML = `
           <div>
             <div class="who">${name}</div>
             <div class="meta">potvrzeno${tag}</div>
           </div>
-          <div class="price">${formatCzk(due)}</div>
+          <div class="meta"></div>
         `;
       } else {
-  futureCounter += 1;
-  const price = priceForFuturePosition(data.totalCzk, futureCounter);
+        // ✅ U volných ukážeme cenu pro konkrétní pořadí příchozího
+        futureCounter += 1;
+        const price = priceForFuturePosition(data.totalCzk, futureCounter);
 
-  row.innerHTML = `
-    <div>
-      <div class="who">zatím nikdo</div>
-      <div class="meta">odhad ceny pro dalšího</div>
-    </div>
-    <div class="price">${formatCzk(price)}</div>
-  `;
-}
+        row.innerHTML = `
+          <div>
+            <div class="who">zatím nikdo</div>
+            <div class="meta">cena ${formatCzk(price)}</div>
+          </div>
+          <div class="meta"></div>
+        `;
+      }
 
       list.appendChild(row);
     }
@@ -311,9 +294,6 @@ function renderFinance(data) {
   elPayAccount.textContent = (data.paymentAccount || "").trim() || "Doplň v Edit stránce";
 
   elTotal.textContent = formatCzk(data.totalCzk);
-  elUnitFull.textContent = ledger.split.unitFull ? formatCzk(ledger.split.unitFull) : "—";
-  elUnitKid.textContent = ledger.split.unitKid ? formatCzk(ledger.split.unitKid) : "—";
-
   elPaid.textContent = formatCzk(ledger.totalPaid);
   elNeed.textContent = formatCzk(ledger.need);
   elSurplus.textContent = formatCzk(ledger.surplus);
@@ -327,7 +307,6 @@ function renderFinance(data) {
   const qrDisabled = !account;
 
   for (const r of rows) {
-    // Vyrovnání (přeplatek / nedoplatek)
     const balanceText =
       r.overpay > 0 ? `Přeplatek ${formatCzk(r.overpay)}`
       : r.underpay > 0 ? `Nedoplatek ${formatCzk(r.underpay)}`
@@ -364,7 +343,6 @@ function renderFinance(data) {
     payList.appendChild(card);
   }
 
-  // info handlers (show payments + refunds with dates)
   document.querySelectorAll("button[data-info]").forEach(btn => {
     btn.addEventListener("click", () => {
       const name = btn.getAttribute("data-info");
@@ -391,7 +369,6 @@ function renderFinance(data) {
     });
   });
 
-  // QR handlers
   document.querySelectorAll("button[data-qr]").forEach(btn => {
     btn.addEventListener("click", () => {
       const name = btn.getAttribute("data-qr");
