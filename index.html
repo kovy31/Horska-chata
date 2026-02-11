@@ -4,32 +4,25 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dovolená – ubytování & obsazení</title>
-  <link rel="stylesheet" href="./assets/style.css?v=20260210-3" />
+  <link rel="stylesheet" href="./assets/style.css?v=20260210-7" />
 </head>
 <body>
   <div class="container">
 
-    <!-- HEADER -->
     <div class="header">
       <div>
         <h1>Dovolená – ubytování & obsazení</h1>
-        <div class="sub">
-          Přehled kdo jede + rozdělení pokojů
-        </div>
+        <div class="sub">Přehled kdo jede, rozdělení pokojů a finance.</div>
       </div>
     </div>
 
-    <!-- AIRBNB STYLE CARD (SLIDER) -->
+    <!-- Airbnb card (slider) -->
     <div class="airWrap">
       <a class="airCard" href="https://www.airbnb.cz/rooms/1509296019313360437" target="_blank" rel="noreferrer">
         <div class="airImgWrap">
-          <img
-            id="airSlideImg"
-            class="airImg"
+          <img id="airSlideImg" class="airImg"
             src="https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3cc519a7-fdd2-44a7-a44a-870c4d051530.jpeg?im_w=1200"
-            alt="Black Diamond – Chalet Raven"
-            loading="lazy"
-          />
+            alt="Black Diamond – Chalet Raven" loading="lazy" />
 
           <div class="airPill">Guest favorite</div>
           <div class="airHeart" aria-hidden="true">♡</div>
@@ -47,10 +40,8 @@
             <div class="airTitle">Chalet in Tignes</div>
             <div class="airRating">★ 5.0 <span class="airReviews">(2)</span></div>
           </div>
-
           <div class="airSub">Black Diamond – Chalet Raven</div>
           <div class="airSub">7× manželský pokoj + 1× dětský pokoj (4 osoby)</div>
-
           <div class="airPriceRow">
             <span class="airPrice">114 938 Kč</span>
             <span class="airMuted">· 6 nocí (12.–18. 7. 2026)</span>
@@ -59,7 +50,7 @@
       </a>
     </div>
 
-    <!-- WHO GOES -->
+    <!-- Who goes -->
     <section class="section">
       <div class="sectionHead">
         <div>
@@ -68,11 +59,10 @@
         </div>
         <div class="statPill" id="whoStat">—</div>
       </div>
-
       <div class="chips" id="whoChips"></div>
     </section>
 
-    <!-- ROOMS -->
+    <!-- Rooms -->
     <section class="section">
       <div class="sectionHead">
         <div>
@@ -80,17 +70,28 @@
         </div>
         <div class="statPill" id="capStat">—</div>
       </div>
-
       <div class="grid" id="roomsGrid"></div>
     </section>
 
-    <!-- FINANCE (COLLAPSIBLE) -->
+    <!-- Finance -->
     <section class="section">
-      <details class="details" id="financeBox">
+      <details class="details" open>
         <summary class="summary">
           <span>Finance</span>
-          <span class="summaryHint">rozbalit</span>
+          <span class="summaryHint">rozbalit / sbalit</span>
         </summary>
+
+        <div class="payBox" id="payBox">
+          <div class="payBoxTitle">Kam poslat platbu</div>
+          <div class="payBoxRow">
+            <div class="payBoxLabel">Číslo účtu</div>
+            <div class="payBoxValue mono" id="payAccount">—</div>
+          </div>
+          <div class="payBoxRow">
+            <div class="payBoxLabel">Poznámka</div>
+            <div class="payBoxValue">Do poznámky napiš jméno a příjmení za koho platíš.</div>
+          </div>
+        </div>
 
         <div class="kpi">
           <div class="item">
@@ -102,13 +103,25 @@
             <div class="value" id="kpiUnit">—</div>
           </div>
           <div class="item">
+            <div class="label">Celkem zaplaceno</div>
+            <div class="value" id="kpiPaid">—</div>
+          </div>
+          <div class="item">
+            <div class="label">Chybí vybrat</div>
+            <div class="value" id="kpiNeed">—</div>
+          </div>
+          <div class="item">
+            <div class="label">Vrátit celkem</div>
+            <div class="value" id="kpiRefund">—</div>
+          </div>
+          <div class="item">
             <div class="label">Součet plateb</div>
             <div class="value" id="kpiSum">—</div>
           </div>
         </div>
 
         <div class="tableWrap">
-          <h2 style="margin:14px 0 6px 0; font-size:16px;">Kdo kolik platí</h2>
+          <h2 style="margin:14px 0 6px 0; font-size:16px;">Kdo kolik zaplatil a vyrovnání</h2>
 
           <div class="desktopTable">
             <table class="table" id="payTable">
@@ -116,7 +129,10 @@
                 <tr>
                   <th>Jméno</th>
                   <th>Pokoj</th>
-                  <th>Platí</th>
+                  <th>Má platit</th>
+                  <th>Zaplaceno</th>
+                  <th>Stav</th>
+                  <th>QR</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -128,11 +144,41 @@
       </details>
     </section>
 
-    
   </div>
 
-  <script src="./assets/config.js?v=20260210-3"></script>
-  <script src="./assets/common.js?v=20260210-3"></script>
-  <script src="./assets/view.js?v=20260210-3"></script>
+  <!-- QR Modal -->
+  <div class="modal" id="qrModal" aria-hidden="true">
+    <div class="modalBackdrop" data-close="1"></div>
+    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="qrTitle">
+      <div class="modalHead">
+        <div>
+          <div class="modalTitle" id="qrTitle">QR platba</div>
+          <div class="modalSub" id="qrSub">—</div>
+        </div>
+        <button class="iconBtn" id="qrClose" type="button" aria-label="Zavřít">✕</button>
+      </div>
+
+      <div class="qrWrap">
+        <div id="qrBox" class="qrBox"></div>
+      </div>
+
+      <div class="btnRow" style="margin-top:12px;">
+        <button class="btn" id="qrDownload" type="button">Uložit PNG</button>
+        <button class="btn primary" id="qrCopy" type="button">Zkopírovat SPD</button>
+      </div>
+
+      <div class="subSmall" style="margin-top:10px;">
+        Po načtení QR v bankovní aplikaci se předvyplní částka + zpráva (jen jméno).
+      </div>
+    </div>
+  </div>
+
+  <script src="./assets/config.js?v=20260210-7"></script>
+  <script src="./assets/common.js?v=20260210-7"></script>
+
+  <!-- QRCode library (no bank / no API, only generation in browser) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-IwR8nQnPzCq+z4bG5F5t6YqKJbH9Xl+7b6+5+g1Ttq6lq8Q0Qm0G6p3t9d2mYx8o2pYk2QxG0dH8qg9mJw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <script src="./assets/view.js?v=20260210-7"></script>
 </body>
 </html>
