@@ -17,6 +17,7 @@ const kpiRefund = document.getElementById("kpiRefund");
 
 let state = defaultData();
 
+// --- helpers ---
 function ensurePaymentRecord(name) {
   if (!state.payments) state.payments = {};
   if (!state.payments[name]) state.payments[name] = { paidCzk: 0, isPaid: false };
@@ -29,13 +30,12 @@ function migratePaymentRecord(oldName, newName) {
   if (!state.payments) state.payments = {};
 
   if (state.payments[oldName]) {
-    if (!state.payments[newName]) {
-      state.payments[newName] = state.payments[oldName];
-    }
+    if (!state.payments[newName]) state.payments[newName] = state.payments[oldName];
     delete state.payments[oldName];
   }
 }
 
+// --- rooms editor ---
 function renderRoomsEditor(data) {
   editGrid.innerHTML = "";
 
@@ -84,11 +84,40 @@ function renderRoomsEditor(data) {
       migratePaymentRecord(prev, next);
       e.target.dataset.prev = next;
 
+      // full re-render is OK here (names changed)
       renderPaymentsPanel();
     });
   });
 }
 
+// --- KPIs only (no re-render table) ---
+function renderPaymentKpis() {
+  const ledger = computeFinanceLedger(state);
+  kpiPaid.textContent = formatCzk(ledger.totalPaid);
+  kpiNeed.textContent = formatCzk(ledger.remainingToCollect);
+  kpiRefund.textContent = formatCzk(ledger.refundTotal);
+
+  // Also update status texts in existing rows (if present)
+  ledger.rows.forEach(r => {
+    const statusEl = payEditBody.querySelector(`[data-status="${cssEscape(r.name)}"]`);
+    if (!statusEl) return;
+
+    const statusText = r.refund > 0
+      ? `Vrátit ${formatCzk(r.refund)}`
+      : r.remaining > 0
+        ? `Doplatit ${formatCzk(r.remaining)}`
+        : "Srovnáno";
+
+    statusEl.textContent = statusText;
+  });
+}
+
+// CSS escape for dataset selectors
+function cssEscape(s) {
+  return String(s).replace(/["\\]/g, "\\$&");
+}
+
+// --- payments panel (FULL render table) ---
 function renderPaymentsPanel() {
   const total = Number(inpTotal.value);
   const kids = Number(inpKids.value);
@@ -114,8 +143,10 @@ function renderPaymentsPanel() {
 
   for (const r of ledger.rows) {
     ensurePaymentRecord(r.name);
+    const rec = state.payments[r.name];
 
-    const tr = document.createElement("tr");
+    // auto isPaid
+    rec.isPaid = (Number(rec.paidCzk) || 0) >= r.due && r.due > 0;
 
     const statusText = r.refund > 0
       ? `Vrátit ${formatCzk(r.refund)}`
@@ -123,49 +154,34 @@ function renderPaymentsPanel() {
         ? `Doplatit ${formatCzk(r.remaining)}`
         : "Srovnáno";
 
+    const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><strong>${r.name}</strong></td>
       <td>${r.roomName}${r.isKids ? " · sleva 25 %" : ""}</td>
       <td><strong>${formatCzk(r.due)}</strong></td>
       <td>
-        <div class="paidCell">
-          <label class="chk">
-            <input type="checkbox" data-paidchk="${r.name.replace(/"/g,'&quot;')}" />
-            <span>Zaplaceno</span>
-          </label>
-          <input class="paidInput" type="number" min="0" step="1" data-paidinp="${r.name.replace(/"/g,'&quot;')}" />
-        </div>
+        <input class="paidInput" type="number" min="0" step="1"
+          data-paidinp="${r.name.replace(/"/g,'&quot;')}"
+          value="${String(Math.round(Number(rec.paidCzk) || 0))}" />
       </td>
-      <td>${statusText}</td>
+      <td><span data-status="${r.name.replace(/"/g,'&quot;')}">${statusText}</span></td>
     `;
-
     payEditBody.appendChild(tr);
 
-    const rec = state.payments[r.name];
-    const chk = tr.querySelector(`input[data-paidchk]`);
+    // IMPORTANT: do NOT re-render whole table on every keystroke
     const inp = tr.querySelector(`input[data-paidinp]`);
-
-    chk.checked = Boolean(rec.isPaid);
-    inp.value = String(Math.round(Number(rec.paidCzk) || 0));
-
-    chk.addEventListener("change", () => {
-      rec.isPaid = chk.checked;
-      if (chk.checked) {
-        rec.paidCzk = r.due;
-        inp.value = String(r.due);
-      }
-      renderPaymentsPanel();
-    });
-
     inp.addEventListener("input", () => {
       const v = Number(inp.value);
       rec.paidCzk = Number.isFinite(v) && v >= 0 ? Math.round(v) : 0;
       rec.isPaid = rec.paidCzk >= r.due && r.due > 0;
-      renderPaymentsPanel();
+
+      // just refresh KPIs + status text (no table rebuild, so typing is smooth)
+      renderPaymentKpis();
     });
   }
 }
 
+// --- Load/save ---
 async function loadFromGitHub() {
   btnLoad.disabled = true;
   btnLoad.textContent = "Načítám…";
@@ -198,7 +214,7 @@ async function saveToGitHub() {
   state.kidsDiscount = kids;
   state.paymentAccount = (inpAccount.value || "").trim();
 
-  // remove payment records for names no longer in rooms
+  // cleanup payments: remove names not in rooms
   const namesNow = new Set();
   for (const room of state.rooms) for (const p of room.people) {
     const n = normalizeName(p);
