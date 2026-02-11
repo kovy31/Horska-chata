@@ -178,10 +178,10 @@ function ensureAirHousingLayout() {
       row.style.gap = "16px";
       row.style.alignItems = "flex-start";
       row.style.justifyContent = "center";
-      elAirWrap.style.margin = "28px 0 12px";
+      elAirWrap.style.margin = "18px 0 0";
       elAirWrap.style.flex = "0 0 auto";
 
-      elAirNote.style.margin = "28px 0 0";
+      elAirNote.style.margin = "18px 0 0";
       elAirNote.style.maxWidth = "360px";
       elAirNote.style.width = "100%";
       elAirNote.style.flex = "0 1 360px";
@@ -192,8 +192,8 @@ function ensureAirHousingLayout() {
       row.style.alignItems = "";
       row.style.justifyContent = "";
 
-      elAirWrap.style.margin = "28px 0 8px";
-      elAirNote.style.margin = "10px auto 0";
+      elAirWrap.style.margin = "18px 0 0";
+      elAirNote.style.margin = "8px auto 0";
       elAirNote.style.maxWidth = "560px";
       elAirNote.style.width = "";
       elAirNote.style.flex = "";
