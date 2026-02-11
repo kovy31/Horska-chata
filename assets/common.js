@@ -278,11 +278,17 @@ function computeFinanceLedger(data) {
   const roomByName = new Map(split.rows.map(r => [r.name, r.roomName]));
   const isKidByName = new Map(split.rows.map(r => [r.name, r.isKid]));
 
+  // base rows (paid/refunded history)
   const rows = names.map(name => {
     const rec = data.people?.[name] || { payments: [], refunds: [] };
-    const paid = sumEntries(rec.payments);
-    const refunded = sumEntries(rec.refunds);
+
+    const payments = Array.isArray(rec.payments) ? rec.payments : [];
+    const refunds  = Array.isArray(rec.refunds) ? rec.refunds : [];
+
+    const paid = sumEntries(payments);
+    const refunded = sumEntries(refunds);
     const netPaid = paid - refunded;
+
     const due = dueByName.get(name) || 0;
 
     const over = Math.max(0, netPaid - due);
@@ -298,8 +304,14 @@ function computeFinanceLedger(data) {
       netPaid,
       overpay: over,
       underpay: under,
-      payments: rec.payments || [],
-      refunds: rec.refunds || [],
+
+      // ✅ TOHLE edit.js potřebuje:
+      remainingToPay: under,      // kolik má ještě doplatit
+      suggestedRefund: 0,         // návrh vratky (doplníme níže)
+
+      // historie pro "i" modaly
+      payments,
+      refunds,
     };
   });
 
@@ -310,6 +322,39 @@ function computeFinanceLedger(data) {
   // Need/surplus always compared to real totalCzk
   const surplus = Math.max(0, cashOnHand - data.totalCzk);
   const need = Math.max(0, data.totalCzk - cashOnHand);
+
+  // ---------- Suggested refunds (AUTO) ----------
+  // Vrací se jen těm, kdo už mají přeplatek (netPaid > due).
+  // Pokud existuje přebytek, rozdělí se proporčně dle přeplatku.
+  const overRows = rows.filter(r => r.overpay > 0);
+  const totalOver = overRows.reduce((a, r) => a + r.overpay, 0);
+
+  const pool = Math.min(surplus, totalOver);
+
+  if (pool > 0 && totalOver > 0) {
+    // Largest remainder method -> součet přesně = pool (v Kč)
+    const parts = overRows.map(r => {
+      const raw = (pool * r.overpay) / totalOver;
+      const base = Math.floor(raw);
+      return { name: r.name, base, frac: raw - base, cap: r.overpay };
+    });
+
+    let assigned = parts.reduce((a, p) => a + p.base, 0);
+    let leftover = pool - assigned;
+
+    parts.sort((a, b) => b.frac - a.frac);
+
+    for (let i = 0; i < parts.length && leftover > 0; i++) {
+      const p = parts[i];
+      if (p.base < p.cap) { // nikdy nepřesáhnout přeplatek
+        p.base += 1;
+        leftover -= 1;
+      }
+    }
+
+    const byName = new Map(parts.map(p => [p.name, Math.min(p.base, p.cap)]));
+    for (const r of rows) r.suggestedRefund = byName.get(r.name) || 0;
+  }
 
   return {
     split,
