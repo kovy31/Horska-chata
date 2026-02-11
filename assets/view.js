@@ -1,6 +1,4 @@
 // assets/view.js
-// QR Platba SPD: ACC expects IBAN (we convert Czech account number locally).
-// Spec: qr-platba.cz (ACC is IBAN, AM is decimal with dot, CC:CZK, MSG message).  [oai_citation:0‡qr-platba.cz](https://qr-platba.cz/pro-vyvojare/specifikace-formatu/)
 
 const AIRBNB_IMAGES = [
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3cc519a7-fdd2-44a7-a44a-870c4d051530.jpeg?im_w=1200",
@@ -25,23 +23,31 @@ const elWhoChips = document.getElementById("whoChips");
 const elWhoStat = document.getElementById("whoStat");
 const elCapStat = document.getElementById("capStat");
 
-// Pay box
 const elPayAccount = document.getElementById("payAccount");
 
-// Finance KPI
+// KPI
 const elTotal = document.getElementById("kpiTotal");
-const elUnit = document.getElementById("kpiUnit");
-const elSum = document.getElementById("kpiSum");
+const elUnitFull = document.getElementById("kpiUnitFull");
+const elUnitKid = document.getElementById("kpiUnitKid");
 const elPaid = document.getElementById("kpiPaid");
 const elNeed = document.getElementById("kpiNeed");
-const elRefund = document.getElementById("kpiRefund");
+const elSurplus = document.getElementById("kpiSurplus");
 
 const payTableBody = document.querySelector("#payTable tbody");
 const payList = document.getElementById("payList");
 
+const refundTableBody = document.querySelector("#refundTable tbody");
+const refundEmpty = document.getElementById("refundEmpty");
+
 // Slider
 const slideImg = document.getElementById("airSlideImg");
 const dotsWrap = document.getElementById("airDots");
+
+// Info modal
+const infoModal = document.getElementById("infoModal");
+const infoClose = document.getElementById("infoClose");
+const infoSub = document.getElementById("infoSub");
+const infoBody = document.getElementById("infoBody");
 
 // QR modal
 const qrModal = document.getElementById("qrModal");
@@ -53,6 +59,74 @@ const qrCopy = document.getElementById("qrCopy");
 
 let lastSpd = "";
 
+// ---------- UI helpers ----------
+function openInfoModal(title, html) {
+  infoSub.textContent = title;
+  infoBody.innerHTML = html;
+  infoModal.classList.add("open");
+  infoModal.setAttribute("aria-hidden", "false");
+}
+function closeInfoModal() {
+  infoModal.classList.remove("open");
+  infoModal.setAttribute("aria-hidden", "true");
+}
+infoClose?.addEventListener("click", closeInfoModal);
+infoModal?.addEventListener("click", (e) => {
+  if (e.target?.dataset?.close) closeInfoModal();
+});
+
+function openQrModal({ title, spd }) {
+  lastSpd = spd;
+  qrSub.textContent = title;
+  qrBox.innerHTML = "";
+  // eslint-disable-next-line no-undef
+  new QRCode(qrBox, { text: spd, width: 260, height: 260, correctLevel: QRCode.CorrectLevel.M });
+  qrModal.classList.add("open");
+  qrModal.setAttribute("aria-hidden", "false");
+}
+function closeQrModal() {
+  qrModal.classList.remove("open");
+  qrModal.setAttribute("aria-hidden", "true");
+}
+qrClose?.addEventListener("click", closeQrModal);
+qrModal?.addEventListener("click", (e) => {
+  if (e.target?.dataset?.close) closeQrModal();
+});
+qrCopy?.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(lastSpd || "");
+    qrCopy.textContent = "Zkopírováno ✓";
+    setTimeout(() => (qrCopy.textContent = "Zkopírovat SPD"), 1200);
+  } catch {
+    alert("Nepodařilo se zkopírovat. Zkus to prosím ručně.");
+  }
+});
+qrDownload?.addEventListener("click", () => {
+  const canvas = qrBox.querySelector("canvas");
+  if (canvas) {
+    const url = canvas.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "qr-platba.png";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return;
+  }
+  const img = qrBox.querySelector("img");
+  if (img?.src) {
+    const a = document.createElement("a");
+    a.href = img.src;
+    a.download = "qr-platba.png";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return;
+  }
+  alert("QR se nepodařilo uložit.");
+});
+
+// ---------- participants ----------
 function uniqSortedNamesFromRooms(data) {
   const set = new Set();
   for (const room of data.rooms) {
@@ -63,44 +137,38 @@ function uniqSortedNamesFromRooms(data) {
   }
   return Array.from(set).sort((a, b) => a.localeCompare(b, "cs"));
 }
-
 function totalCapacity(data) {
   return data.rooms.reduce((sum, r) => sum + (Array.isArray(r.people) ? r.people.length : 0), 0);
 }
-
 function filledBeds(data) {
   let n = 0;
-  for (const r of data.rooms) {
-    for (const p of r.people) if ((p || "").trim()) n++;
-  }
+  for (const r of data.rooms) for (const p of r.people) if ((p || "").trim()) n++;
   return n;
 }
 
 function renderWhoGoes(data) {
   const names = uniqSortedNamesFromRooms(data);
   elWhoChips.innerHTML = "";
-
   if (names.length === 0) {
     elWhoChips.innerHTML = `<div class="emptyNote">Zatím nikdo není zapsaný v pokojích.</div>`;
     elWhoStat.textContent = "0 potvrzených";
     return;
   }
-
   for (const name of names) {
     const chip = document.createElement("div");
     chip.className = "chip";
     chip.textContent = name;
     elWhoChips.appendChild(chip);
   }
-
   elWhoStat.textContent = `${names.length} potvrzených`;
 }
 
 function renderRooms(data) {
   elRoomsGrid.innerHTML = "";
-  const payments = computePayments(data);
+
+  const split = computeDueSplit(data);
   const byRoom = new Map();
-  for (const r of payments.rows) {
+  for (const r of split.rows) {
     if (!byRoom.has(r.roomId)) byRoom.set(r.roomId, []);
     byRoom.get(r.roomId).push(r);
   }
@@ -117,12 +185,11 @@ function renderRooms(data) {
     const statusClass = isFull ? "roomStatus full" : isEmpty ? "roomStatus empty" : "roomStatus partial";
     const statusText = isFull ? "Plno" : isEmpty ? "Volno" : "Částečně";
 
-    const isKids = room.type === "kids";
     card.innerHTML = `
       <div class="roomHead">
         <div>
           <h2>${room.name}</h2>
-          <div class="meta">${isKids ? "Dětský pokoj · sleva 25 %" : "Pokoj s manželskou postelí"}</div>
+          <div class="meta">${room.type === "kids" ? "Dětský pokoj (sleva 25 % pro osoby 15+)" : "Pokoj s manželskou postelí"}</div>
         </div>
         <div class="${statusClass}">${statusText} · ${filled}/${capacity}</div>
       </div>
@@ -139,14 +206,15 @@ function renderRooms(data) {
       list.appendChild(empty);
     } else {
       for (const p of rows) {
+        const tag = p.isKid ? " · sleva 25 %" : "";
         const row = document.createElement("div");
         row.className = "row";
         row.innerHTML = `
           <div>
             <div class="who">${p.name}</div>
-            <div class="meta">potvrzeno</div>
+            <div class="meta">potvrzeno${tag}</div>
           </div>
-          <div class="meta">${formatCzk(p.pay)}</div>
+          <div class="meta">${formatCzk(p.due)}</div>
         `;
         list.appendChild(row);
       }
@@ -155,14 +223,11 @@ function renderRooms(data) {
     elRoomsGrid.appendChild(card);
   }
 
-  const cap = totalCapacity(data);
-  const filledTotal = filledBeds(data);
-  elCapStat.textContent = `Obsazeno ${filledTotal}/${cap}`;
+  elCapStat.textContent = `Obsazeno ${filledBeds(data)}/${totalCapacity(data)}`;
 }
 
-/* ---------- Czech account -> IBAN (CZ) ---------- */
+/* ---------- Czech account -> IBAN (CZ) for QR SPD ---------- */
 function parseCzAccount(acc) {
-  // accepts: "123456789/0100" or "19-123456789/0100"
   const s = (acc || "").trim().replace(/\s+/g, "");
   if (!s.includes("/")) return null;
   const [left, bank] = s.split("/");
@@ -176,226 +241,167 @@ function parseCzAccount(acc) {
     prefix = p || "0";
     number = n || "";
   }
-
   if (!/^\d{1,6}$/.test(prefix)) return null;
   if (!/^\d{1,10}$/.test(number)) return null;
 
-  return {
-    bankCode: bank,
-    prefix: prefix,
-    accountNumber: number
-  };
+  return { bankCode: bank, prefix, accountNumber: number };
 }
-
 function mod97(numStr) {
   let remainder = 0;
   for (let i = 0; i < numStr.length; i++) {
-    const ch = numStr.charCodeAt(i) - 48;
-    remainder = (remainder * 10 + ch) % 97;
+    remainder = (remainder * 10 + (numStr.charCodeAt(i) - 48)) % 97;
   }
   return remainder;
 }
-
 function czAccountToIban(acc) {
   const p = parseCzAccount(acc);
   if (!p) return null;
-
   const bank = p.bankCode.padStart(4, "0");
   const prefix = p.prefix.padStart(6, "0");
   const acct = p.accountNumber.padStart(10, "0");
-  const bban = bank + prefix + acct; // 20 digits for CZ
+  const bban = bank + prefix + acct;
 
-  // IBAN check digits:
-  // Move country + "00" to end, convert letters (C=12, Z=35)
-  // check = 98 - mod97(bban + "123500")
-  const rearranged = bban + "123500"; // "CZ00" => C=12 Z=35 + "00"
+  const rearranged = bban + "123500"; // CZ00 -> 12 35 00
   const check = 98 - mod97(rearranged);
   const cd = String(check).padStart(2, "0");
-
   return `CZ${cd}${bban}`;
 }
-
-/* ---------- SPD + QR ---------- */
 function buildSpd({ accountCz, amountCzk, message }) {
   const iban = czAccountToIban(accountCz);
   if (!iban) return null;
-
-  const am = (Math.round(Number(amountCzk) || 0)).toFixed(2); // 2 decimals with dot
+  const am = (Math.round(Number(amountCzk) || 0)).toFixed(2);
   const msg = encodeURIComponent(String(message || "").trim()).replace(/%20/g, " ");
-  // Spec allows URL encoding and MSG field.  [oai_citation:1‡qr-platba.cz](https://qr-platba.cz/pro-vyvojare/specifikace-formatu/)
   return `SPD*1.0*ACC:${iban}*AM:${am}*CC:CZK*MSG:${msg}*`;
 }
 
-function openQrModal({ title, spd }) {
-  lastSpd = spd;
-
-  qrSub.textContent = title;
-
-  // clear QR
-  qrBox.innerHTML = "";
-  // QRCode library renders either <canvas> or <img> inside qrBox
-  // eslint-disable-next-line no-undef
-  new QRCode(qrBox, {
-    text: spd,
-    width: 260,
-    height: 260,
-    correctLevel: QRCode.CorrectLevel.M
-  });
-
-  qrModal.classList.add("open");
-  qrModal.setAttribute("aria-hidden", "false");
-}
-
-function closeQrModal() {
-  qrModal.classList.remove("open");
-  qrModal.setAttribute("aria-hidden", "true");
-}
-
-qrClose?.addEventListener("click", closeQrModal);
-qrModal?.addEventListener("click", (e) => {
-  if (e.target?.dataset?.close) closeQrModal();
-});
-
-qrCopy?.addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(lastSpd || "");
-    qrCopy.textContent = "Zkopírováno ✓";
-    setTimeout(() => (qrCopy.textContent = "Zkopírovat SPD"), 1200);
-  } catch {
-    alert("Nepodařilo se zkopírovat. Zkus to prosím ručně.");
-  }
-});
-
-qrDownload?.addEventListener("click", () => {
-  // Prefer canvas
-  const canvas = qrBox.querySelector("canvas");
-  if (canvas) {
-    const url = canvas.toDataURL("image/png");
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "qr-platba.png";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    return;
-  }
-
-  // fallback to image
-  const img = qrBox.querySelector("img");
-  if (img?.src) {
-    const a = document.createElement("a");
-    a.href = img.src;
-    a.download = "qr-platba.png";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    return;
-  }
-
-  alert("QR se nepodařilo uložit (nenašel jsem canvas/img).");
-});
-
 function renderFinance(data) {
-  // Account number (CZ domestic)
-  const account = (data.paymentAccount || "").trim();
-  elPayAccount.textContent = account ? account : "Doplní se v Edit stránce";
-
   const ledger = computeFinanceLedger(data);
 
-  elTotal.textContent = formatCzk(ledger.totalDue);
-  elUnit.textContent = ledger.unit ? formatCzk(ledger.unit) : "—";
-  elSum.textContent = formatCzk(ledger.totalDue);
+  elPayAccount.textContent = (data.paymentAccount || "").trim() || "Doplň v Edit stránce";
+
+  elTotal.textContent = formatCzk(data.totalCzk);
+  elUnitFull.textContent = ledger.split.unitFull ? formatCzk(ledger.split.unitFull) : "—";
+  elUnitKid.textContent = ledger.split.unitKid ? formatCzk(ledger.split.unitKid) : "—";
 
   elPaid.textContent = formatCzk(ledger.totalPaid);
-  elNeed.textContent = formatCzk(ledger.remainingToCollect);
-  elRefund.textContent = formatCzk(ledger.refundTotal);
+  elNeed.textContent = formatCzk(ledger.need);
+  elSurplus.textContent = formatCzk(ledger.surplus);
 
   const rows = [...ledger.rows].sort((a, b) => a.name.localeCompare(b.name, "cs"));
+
+  // main table
   payTableBody.innerHTML = "";
   payList.innerHTML = "";
 
+  const account = (data.paymentAccount || "").trim();
+  const qrDisabled = !account;
+
   for (const r of rows) {
-    const stateText = r.refund > 0
-      ? `Vrátit ${formatCzk(r.refund)}`
-      : r.remaining > 0
-        ? `Doplatit ${formatCzk(r.remaining)}`
-        : "Srovnáno";
+    const paidInfoBtn = `<button class="iconTiny" data-info="pay" data-name="${r.name.replace(/"/g,'&quot;')}">i</button>`;
+    const refundInfoBtn = `<button class="iconTiny" data-info="ref" data-name="${r.name.replace(/"/g,'&quot;')}">i</button>`;
 
-    // desktop table row (6 columns)
     const tr = document.createElement("tr");
-
-    const qrBtnDisabled = !account;
     tr.innerHTML = `
-      <td>${r.name}</td>
-      <td>${r.roomName}${r.isKids ? " · sleva 25 %" : ""}</td>
+      <td>${r.name}${r.isKid ? ` <span class="miniTag">sleva 25%</span>` : ""}</td>
+      <td>${r.roomName}</td>
       <td><strong>${formatCzk(r.due)}</strong></td>
-      <td>${formatCzk(r.paid)}</td>
-      <td><strong>${stateText}</strong></td>
-      <td>
-        <button class="btn tiny" data-qr="${r.name.replace(/"/g, "&quot;")}" ${qrBtnDisabled ? "disabled" : ""}>
-          QR
-        </button>
+      <td class="center">${formatCzk(r.paid)} ${paidInfoBtn}</td>
+      <td class="center">
+        <strong>${r.balanceText}</strong>
+        ${r.suggestedRefund > 0 ? ` ${refundInfoBtn}` : ""}
+      </td>
+      <td class="center">
+        <button class="btn tiny" data-qr="${r.name.replace(/"/g,'&quot;')}" ${qrDisabled ? "disabled" : ""}>QR</button>
       </td>
     `;
     payTableBody.appendChild(tr);
 
-    // mobile row with QR button
     const card = document.createElement("div");
     card.className = "row";
     card.innerHTML = `
       <div>
-        <div class="who">${r.name}</div>
-        <div class="meta">${r.roomName}${r.isKids ? " · sleva 25 %" : ""}</div>
-        <div class="meta">Má platit: ${formatCzk(r.due)} · Zaplaceno: ${formatCzk(r.paid)}</div>
-        <div class="meta"><strong>${stateText}</strong></div>
+        <div class="who">${r.name} ${r.isKid ? `<span class="miniTag">sleva 25%</span>` : ""}</div>
+        <div class="meta">${r.roomName}</div>
+        <div class="meta">Má platit: ${formatCzk(r.due)}</div>
+        <div class="meta">Zaplaceno: ${formatCzk(r.paid)} <button class="iconTiny" data-info="pay" data-name="${r.name.replace(/"/g,'&quot;')}">i</button></div>
+        <div class="meta"><strong>${r.balanceText}</strong> ${r.suggestedRefund>0 ? `<button class="iconTiny" data-info="ref" data-name="${r.name.replace(/"/g,'&quot;')}">i</button>` : ""}</div>
       </div>
       <div>
-        <button class="btn tiny" data-qr="${r.name.replace(/"/g, "&quot;")}" ${qrBtnDisabled ? "disabled" : ""}>QR</button>
+        <button class="btn tiny" data-qr="${r.name.replace(/"/g,'&quot;')}" ${qrDisabled ? "disabled" : ""}>QR</button>
       </div>
     `;
     payList.appendChild(card);
   }
 
-  // attach QR handlers (both desktop + mobile)
+  // refund suggestion table
+  refundTableBody.innerHTML = "";
+  let anyRefund = false;
+
+  for (const r of rows) {
+    const suggested = r.suggestedRefund || 0;
+    const already = r.refunded || 0;
+    const remain = Math.max(0, suggested - 0); // suggested is "now" amount; actual remaining = suggested, since we propose, not enforce
+    if (suggested <= 0) continue;
+    anyRefund = true;
+
+    const detailBtn = `<button class="btn tiny" data-info="ref" data-name="${r.name.replace(/"/g,'&quot;')}">Detail</button>`;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${r.name}</strong></td>
+      <td class="center"><strong>${formatCzk(suggested)}</strong></td>
+      <td class="center">${formatCzk(already)}</td>
+      <td class="center">${formatCzk(remain)}</td>
+      <td class="center">${detailBtn}</td>
+    `;
+    refundTableBody.appendChild(tr);
+  }
+
+  refundEmpty.style.display = anyRefund ? "none" : "block";
+
+  // handlers: info
+  document.querySelectorAll("button[data-info]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const kind = btn.getAttribute("data-info");
+      const name = btn.getAttribute("data-name");
+      const row = rows.find(x => x.name === name);
+      if (!row) return;
+
+      if (kind === "pay") {
+        const list = (row.payments || [])
+          .slice()
+          .sort((a, b) => String(a.date||"").localeCompare(String(b.date||"")))
+          .map(p => `<div class="infoRow"><div>${p.date || "—"}</div><div class="mono">${formatCzk(p.amount)}</div></div>`)
+          .join("");
+        openInfoModal(`${name} – Platby`, list || `<div class="subSmall">Žádné platby.</div>`);
+      } else {
+        const list = (row.refunds || [])
+          .slice()
+          .sort((a, b) => String(a.date||"").localeCompare(String(b.date||"")))
+          .map(p => `<div class="infoRow"><div>${p.date || "—"}</div><div class="mono">${formatCzk(p.amount)}</div></div>`)
+          .join("");
+        const extra = `<div class="subSmall" style="margin-top:10px;">Navržená vratka teď: <strong>${formatCzk(row.suggestedRefund || 0)}</strong></div>`;
+        openInfoModal(`${name} – Vratky`, (list || `<div class="subSmall">Zatím nic nebylo vráceno.</div>`) + extra);
+      }
+    });
+  });
+
+  // handlers: QR
   document.querySelectorAll("button[data-qr]").forEach(btn => {
     btn.addEventListener("click", () => {
       const name = btn.getAttribute("data-qr");
       if (!account) return alert("Chybí číslo účtu – doplň ho v Edit stránce a ulož.");
+      const row = rows.find(x => x.name === name);
+      if (!row) return;
 
-      const target = rows.find(x => x.name === name);
-      if (!target) return;
-
-      const spd = buildSpd({
-        accountCz: account,
-        amountCzk: target.due,
-        message: target.name // user requested: just name
-      });
-
-      if (!spd) {
-        alert("Neplatné číslo účtu. Použij formát např. 123456789/0100 nebo 19-123456789/0100.");
-        return;
-      }
-
-      openQrModal({
-        title: `${target.name} · ${formatCzk(target.due)}`,
-        spd
-      });
+      const spd = buildSpd({ accountCz: account, amountCzk: row.due, message: row.name });
+      if (!spd) return alert("Neplatné číslo účtu. Použij např. 123456789/0100 nebo 19-123456789/0100.");
+      openQrModal({ title: `${row.name} · ${formatCzk(row.due)}`, spd });
     });
   });
 }
 
-async function loadAndRender() {
-  try {
-    const data = await loadDataFromGitHub();
-    renderWhoGoes(data);
-    renderRooms(data);
-    renderFinance(data);
-  } catch (e) {
-    alert("Nepodařilo se načíst data z GitHubu:\n" + e.message);
-  }
-}
-
-/* ---------- Slider ---------- */
+// ---------- Slider ----------
 function makeDots(count) {
   dotsWrap.innerHTML = "";
   for (let i = 0; i < count; i++) {
@@ -451,6 +457,17 @@ function startTimer() {
 function restartTimer() {
   if (timer) clearInterval(timer);
   if (usableImages.length > 1) startTimer();
+}
+
+async function loadAndRender() {
+  try {
+    const data = await loadDataFromGitHub();
+    renderWhoGoes(data);
+    renderRooms(data);
+    renderFinance(data);
+  } catch (e) {
+    alert("Nepodařilo se načíst data z GitHubu:\n" + e.message);
+  }
 }
 
 loadAndRender();
