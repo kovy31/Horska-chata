@@ -36,8 +36,8 @@ function countPeopleByType(rooms) {
 /**
  * Pricing rules:
  * - If n <= 10: everyone share = total/10 (minimum)
- * - If 11 <= n <= 13: everyone share = total/n
- * - If n >= 14: kids share = 0.75 * standardShare, adults share = 1.0 * standardShare
+ * - If 11 <= n <= 14: everyone share = total/n
+ * - If n >= 15: kids share = 0.75 * standardShare, adults share = 1.0 * standardShare
  *   where standardShare = total / (adults + 0.75*kids)
  */
 function computeShares(totalCzk, nAdults, nKids) {
@@ -50,12 +50,12 @@ function computeShares(totalCzk, nAdults, nKids) {
     return { mode: "min10", standard: per, kids: per, adults: per };
   }
 
-  if (n <= 13) {
+  if (n <= 14) {
     const per = total / n;
     return { mode: "divide", standard: per, kids: per, adults: per };
   }
 
-  // >= 14, kids discount 25%
+  // >= 15, kids discount 25%
   const weight = (nAdults + 0.75 * nKids);
   const std = weight > 0 ? (total / weight) : 0;
   return { mode: "kids25", standard: std, kids: 0.75 * std, adults: std };
@@ -191,6 +191,8 @@ function sanitizeData(data) {
 
   d.paymentAccount = typeof data.paymentAccount === "string" ? data.paymentAccount.trim() : "";
   d.airNote = typeof data.airNote === "string" ? data.airNote.trim() : "";
+  d.banner = typeof data.banner === "string" ? data.banner.trim() : "";
+  d.bannerVisible = !!data.bannerVisible;
 
   if (Array.isArray(data.rooms)) {
     const map = new Map(d.rooms.map(r => [r.id, r]));
