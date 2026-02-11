@@ -26,6 +26,7 @@ const elWhoStat = document.getElementById("whoStat");
 const elCapStat = document.getElementById("capStat");
 
 const elPriceScaleBody = document.getElementById("priceScaleBody");
+const elBannerWrap = document.getElementById("bannerWrap");
 
 const elPayAccount = document.getElementById("payAccount");
 const elAirNote = document.getElementById("airNoteText");
@@ -277,7 +278,7 @@ function renderPriceScale(data) {
       <p>Cena za osobu se odv\u00edj\u00ed od celkov\u00e9 ceny ubytov\u00e1n\u00ed a po\u010dtu lid\u00ed.<br>
       \u2022 Do 10 lid\u00ed se cena po\u010d\u00edt\u00e1 jako celkov\u00e1 \u010d\u00e1stka d\u011blen\u00e1 10 (aby nebyla p\u0159ehnan\u011b vysok\u00e1).<br>
       \u2022 Od 11 lid\u00ed se cena d\u011bl\u00ed skute\u010dn\u00fdm po\u010dtem osob.<br>
-      \u2022 Od 14 lid\u00ed m\u00e1 d\u011btsk\u00fd pokoj slevu 25 %.</p>
+      \u2022 Od 15 lid\u00ed m\u00e1 d\u011btsk\u00fd pokoj slevu 25 %.</p>
       <p><b>\u010c\u00edm v\u00edc n\u00e1s pojede, t\u00edm ni\u017e\u0161\u00ed cena vyjde.</b></p>
       <p>V aplikaci v\u017edy vid\u00ed\u0161:<br>
       \u2022 kolik m\u00e1\u0161 platit,<br>
@@ -720,6 +721,12 @@ function initSlider() {
     if (data.airNote) {
       elAirNote.innerHTML = data.airNote;
       elAirNote.style.display = "block";
+    }
+
+    // banner
+    if (data.bannerVisible && data.banner) {
+      elBannerWrap.innerHTML = `<div class="banner">${data.banner}</div>`;
+      elBannerWrap.style.display = "block";
     }
 
     renderWhoGoes(data);
