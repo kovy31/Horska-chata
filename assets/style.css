@@ -447,3 +447,31 @@ input{
 }
 
 .infoRow:first-child{ border-top:none; }
+
+/* ===== Rooms list alignment fix ===== */
+.list .row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+}
+
+.price{
+  font-weight:900;
+  white-space:nowrap;
+  text-align:right;
+}
+
+/* ===== Room status pill ===== */
+.roomStatus{
+  font-size:12px;
+  font-weight:900;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:rgba(0,0,0,.20);
+  white-space:nowrap;
+}
+.roomStatus.full{ opacity:1; }
+.roomStatus.partial{ opacity:.9; }
+.roomStatus.empty{ opacity:.8; }
