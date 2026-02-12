@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dovolená – ubytování & finance</title>
-  <link rel="stylesheet" href="./assets/style.css?v=20260211-4" />
+  <link rel="stylesheet" href="./assets/style.css?v=20260212-1" />
 </head>
 <body>
   <div class="container">
@@ -58,6 +58,21 @@
     <!-- Google Maps -->
     <div id="mapWrap" style="display:none;"></div>
 
+    <!-- Doprava (accordion) -->
+    <section style="margin-top:14px;">
+      <details class="details">
+        <summary class="summary">
+          <span>Doprava</span>
+          <span class="chev" aria-hidden="true">▾</span>
+        </summary>
+        <div style="line-height:1.7; padding:12px 0;">
+          <p>Na místo pojedeme auty.</p>
+          <p>Pro všechny účastníky vytvoříme skupinu, kde se mezi sebou domluvíte, kdo má volné místo a kdo se k někomu přidá. Neboj, nikoho tam nenecháme stopovat 😄</p>
+          <p>Domluvu ohledně benzínu a případného vyrovnání si pak vyřešte mezi sebou podle dohody.</p>
+        </div>
+      </details>
+    </section>
+
     <div class="spacer"></div>
 
     <!-- Banner -->
@@ -109,7 +124,7 @@
 
     <!-- Finance -->
     <section class="section">
-      <details class="details" open>
+      <details class="details">
         <summary class="summary">
           <span>Finance</span>
           <span class="chev" aria-hidden="true">▾</span>
@@ -132,6 +147,7 @@
           <div class="item">
             <div class="label">Celková cena</div>
             <div class="value" id="kpiTotal">—</div>
+            <div class="subSmall" id="kpiTotalNote" style="margin-top:2px;"></div>
           </div>
           <div class="item">
             <div class="label">Celkem zaplaceno</div>
@@ -157,7 +173,7 @@
                   <th>Jméno</th>
                   <th>Pokoj</th>
                   <th>Má platit</th>
-                  <th>Zaplaceno</th>
+                  <th>Uhrazeno</th>
                   <th>Vyrovnání</th>
                   <th>QR</th>
                 </tr>
@@ -208,8 +224,8 @@
     </div>
   </div>
 
-  <script src="./assets/config.js?v=20260211-2"></script>
-  <script src="./assets/common.js?v=20260211-2"></script>
-  <script src="./assets/view.js?v=20260211-2"></script>
+  <script src="./assets/config.js?v=20260212-1"></script>
+  <script src="./assets/common.js?v=20260212-1"></script>
+  <script src="./assets/view.js?v=20260212-1"></script>
 </body>
 </html>
