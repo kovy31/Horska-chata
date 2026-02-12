@@ -377,7 +377,7 @@ function renderAdminTable() {
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td><button class="btn" data-sel="${p.name}" type="button">${p.name}</button></td>
+      <td><button class="btn tiny" data-sel="${p.name}" type="button">${p.name}</button></td>
       <td class="center">${p.room}</td>
       <td class="center">${formatCzk(mustPay)}</td>
       <td class="center">${formatCzk(paid)}</td>
