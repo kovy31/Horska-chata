@@ -462,10 +462,16 @@ function formatSaveErrorMessage(err) {
 }
 
 async function loadFromGitHub() {
+  const token = (inpToken.value || "").trim();
+  if (!token) {
+    alert("Nejdřív se přihlas tokenem.");
+    return;
+  }
+
   btnLoad.disabled = true;
   btnLoad.textContent = "Načítám…";
   try {
-    state = await loadDataFromGitHub();
+    state = await loadDataFromGitHub(token);
     inpTotal.value = String(state.totalCzk);
     if (inpActualCzk) inpActualCzk.value = state.actualCzk > 0 ? String(state.actualCzk) : "";
     inpAccount.value = state.paymentAccount || "";
@@ -530,7 +536,7 @@ btnLoad.addEventListener("click", loadFromGitHub);
 btnSave.addEventListener("click", saveToGitHubNow);
 
 // init
-inpTotal.value = String(state.totalCzk);
+inpTotal.value = "";
 if (inpActualCzk) inpActualCzk.value = state.actualCzk > 0 ? String(state.actualCzk) : "";
 inpAccount.value = state.paymentAccount || "";
 if (inpAirNote) inpAirNote.value = state.airNote || "";
@@ -561,4 +567,10 @@ btnUnassignedAdd.addEventListener("click", () => {
 });
 inpUnassignedAdd.addEventListener("keydown", (e) => {
   if (e.key === "Enter") { e.preventDefault(); btnUnassignedAdd.click(); }
+});
+
+// Hide sensitive prefilled value until token is provided.
+inpToken.addEventListener("input", () => {
+  const hasToken = (inpToken.value || "").trim().length > 0;
+  if (!hasToken) inpTotal.value = "";
 });
