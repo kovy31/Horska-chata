@@ -45,6 +45,11 @@ const unassignedList = document.getElementById("unassignedList");
 const inpUnassignedAdd = document.getElementById("inpUnassignedAdd");
 const btnUnassignedAdd = document.getElementById("btnUnassignedAdd");
 
+const loadingOverlay = document.getElementById("loadingOverlay");
+const loadingTitle = document.getElementById("loadingTitle");
+const loadingText = document.getElementById("loadingText");
+const loadingNote = document.getElementById("loadingNote");
+
 function enforceHiddenTotalWhenLoggedOut() {
   const hasToken = (inpToken.value || "").trim().length > 0;
   if (!hasToken) {
@@ -53,6 +58,29 @@ function enforceHiddenTotalWhenLoggedOut() {
   } else if (inpTotal.placeholder === "Přihlaste se tokenem") {
     inpTotal.placeholder = "";
   }
+}
+
+function showLoading(mode) {
+  if (!loadingOverlay) return;
+  if (mode === "load") {
+    if (loadingTitle) loadingTitle.textContent = "Načítám data z GitHubu…";
+    if (loadingText) loadingText.textContent = "Tahám poslední verzi dat z Issue.";
+  } else if (mode === "save") {
+    if (loadingTitle) loadingTitle.textContent = "Ukládám do GitHubu…";
+    if (loadingText) loadingText.textContent = "Zapisuji změny do Issue jako JSON.";
+  } else {
+    if (loadingTitle) loadingTitle.textContent = "Pracuji s GitHubem…";
+    if (loadingText) loadingText.textContent = "Chvíli strpení.";
+  }
+  if (loadingNote) loadingNote.textContent = "Nezavírej stránku, github občas reaguje pomaleji (několik vteřin).";
+  loadingOverlay.classList.add("open");
+  loadingOverlay.setAttribute("aria-hidden", "false");
+}
+
+function hideLoading() {
+  if (!loadingOverlay) return;
+  loadingOverlay.classList.remove("open");
+  loadingOverlay.setAttribute("aria-hidden", "true");
 }
 
 // ---- helpers ----
@@ -551,6 +579,7 @@ async function loadFromGitHub() {
   btnLoad.disabled = true;
   btnLoad.textContent = "Načítám…";
   try {
+    showLoading("load");
     state = await loadDataFromGitHub(token);
     inpTotal.value = String(state.totalCzk);
     if (inpActualCzk) inpActualCzk.value = state.actualCzk > 0 ? String(state.actualCzk) : "";
@@ -569,6 +598,7 @@ async function loadFromGitHub() {
   } catch (e) {
     alert("Nepodařilo se načíst:\n" + e.message);
   } finally {
+    hideLoading();
     btnLoad.disabled = false;
     btnLoad.textContent = "Načíst";
   }
@@ -602,11 +632,13 @@ async function saveToGitHubNow() {
   btnSave.disabled = true;
   btnSave.textContent = "Ukládám…";
   try {
+    showLoading("save");
     await saveDataToGitHub(state, token);
     alert("Uloženo do GitHub Issue.");
   } catch (e) {
     alert("Nepodarilo se ulozit:\n\n" + formatSaveErrorMessage(e));
   } finally {
+    hideLoading();
     btnSave.disabled = false;
     btnSave.textContent = "Uložit";
   }
