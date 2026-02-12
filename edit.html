@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Editace – pokoje, platby, vratky</title>
-  <link rel="stylesheet" href="./assets/style.css?v=20260212-8" />
+  <link rel="stylesheet" href="./assets/style.css?v=20260212-10" />
 </head>
 <body>
   <div class="container">
@@ -161,18 +161,22 @@
             <div class="twoCols">
               <div>
                 <div class="label">Přidat platbu</div>
-                <div class="row">
-                  <input id="suggestPay" type="number" min="0" step="1" placeholder="částka" />
-                  <input id="suggestPayDate" type="text" inputmode="numeric" placeholder="DD-MM-YYYY" />
+                <div class="row entryRow">
+                  <div class="entryFields">
+                    <input id="suggestPay" type="number" min="0" step="1" placeholder="částka" />
+                    <input id="suggestPayDate" type="text" inputmode="numeric" placeholder="DD-MM-YYYY" />
+                  </div>
                   <button class="btn" id="btnAddPay">Přidat</button>
                 </div>
               </div>
 
               <div>
                 <div class="label">Přidat vratku</div>
-                <div class="row">
-                  <input id="suggestRefund" type="number" min="0" step="1" placeholder="částka" />
-                  <input id="suggestRefundDate" type="text" inputmode="numeric" placeholder="DD-MM-YYYY" />
+                <div class="row entryRow">
+                  <div class="entryFields">
+                    <input id="suggestRefund" type="number" min="0" step="1" placeholder="částka" />
+                    <input id="suggestRefundDate" type="text" inputmode="numeric" placeholder="DD-MM-YYYY" />
+                  </div>
                   <button class="btn" id="btnAddRefund">Přidat</button>
                 </div>
               </div>
