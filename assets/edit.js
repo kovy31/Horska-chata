@@ -30,6 +30,8 @@ const refundListAdmin = document.getElementById("refundListAdmin");
 
 const suggestPay = document.getElementById("suggestPay");
 const suggestRefund = document.getElementById("suggestRefund");
+const suggestPayDate = document.getElementById("suggestPayDate");
+const suggestRefundDate = document.getElementById("suggestRefundDate");
 const suggestHint = document.getElementById("suggestHint");
 
 const btnAddPay = document.getElementById("btnAddPay");
@@ -90,6 +92,13 @@ function cleanupPeopleNotInRooms() {
   }
 }
 
+function normalizeEntryDateInput(rawDate) {
+  const d = String(rawDate || "").trim();
+  if (!d) return todayISO();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  return d;
+}
+
 // ---- rooms editor ----
 function freeSlots(data, excludeRoomId) {
   const out = [];
@@ -130,7 +139,7 @@ function renderRoomsEditor(data) {
       <div class="roomEditTop">
         <div>
           <div class="roomEditName">${r.name || "Pokoj"}</div>
-          <div class="roomEditMeta">${r.type === "kids" ? "Dětský pokoj" : "Dvoulůžko"} · ${r.id}</div>
+          <div class="roomEditMeta">${r.type === "kids" ? "Dvě palandy" : "Manželská postel"} · ${r.id}</div>
         </div>
       </div>
       <div class="slots">${slots}</div>
@@ -442,8 +451,10 @@ btnAddPay.addEventListener("click", () => {
   if (!selectedName) return alert("Nejdřív vyber jméno.");
   const a = Math.round(Number(suggestPay.value) || 0);
   if (!(a > 0)) return alert("Neplatná částka.");
+  const d = normalizeEntryDateInput(suggestPayDate?.value);
+  if (!d) return alert("Neplatné datum platby (použij YYYY-MM-DD).");
   const rec = state.people[selectedName] || (state.people[selectedName] = { payments: [], refunds: [] });
-  rec.payments.push({ amount: a, date: todayISO() });
+  rec.payments.push({ amount: a, date: d });
   cleanupEmptyEntries(rec);
   renderAdminTable();
   renderSelectedPanel();
@@ -453,8 +464,10 @@ btnAddRefund.addEventListener("click", () => {
   if (!selectedName) return alert("Nejdřív vyber jméno.");
   const a = Math.round(Number(suggestRefund.value) || 0);
   if (!(a > 0)) return alert("Neplatná částka.");
+  const d = normalizeEntryDateInput(suggestRefundDate?.value);
+  if (!d) return alert("Neplatné datum vratky (použij YYYY-MM-DD).");
   const rec = state.people[selectedName] || (state.people[selectedName] = { payments: [], refunds: [] });
-  rec.refunds.push({ amount: a, date: todayISO() });
+  rec.refunds.push({ amount: a, date: d });
   cleanupEmptyEntries(rec);
   renderAdminTable();
   renderSelectedPanel();
@@ -559,6 +572,8 @@ renderUnassigned();
 renderAdminTable();
 renderSelectedPanel();
 enforceHiddenTotalWhenLoggedOut();
+if (suggestPayDate) suggestPayDate.value = todayISO();
+if (suggestRefundDate) suggestRefundDate.value = todayISO();
 
 // zoom slider live update
 if (inpMapZoom) {
