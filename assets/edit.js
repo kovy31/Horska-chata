@@ -6,6 +6,7 @@ let selectedName = "";
 const inpTotal = document.getElementById("inpTotal");
 const inpAccount = document.getElementById("inpAccount");
 const inpAirNote = document.getElementById("inpAirNote");
+const inpMapAddress = document.getElementById("inpMapAddress");
 const inpBanner = document.getElementById("inpBanner");
 const inpBannerVisible = document.getElementById("inpBannerVisible");
 const inpToken = document.getElementById("inpToken");
@@ -72,6 +73,18 @@ function cleanupPeopleNotInRooms() {
 }
 
 // ---- rooms editor ----
+function freeSlots(data, excludeRoomId) {
+  const out = [];
+  for (const r of data.rooms || []) {
+    for (let i = 0; i < (r.people || []).length; i++) {
+      if (!normalizeName(r.people[i])) {
+        out.push({ roomId: r.id, idx: i, label: `${r.name || r.id} · Místo ${i + 1}` });
+      }
+    }
+  }
+  return out;
+}
+
 function renderRoomsEditor(data) {
   editGrid.innerHTML = "";
   for (const r of data.rooms || []) {
@@ -79,9 +92,17 @@ function renderRoomsEditor(data) {
     card.className = "roomEdit";
     const slots = (r.people || []).map((p, idx) => {
       const id = `${r.id}_${idx}`;
+      const name = normalizeName(p);
+
+      // move button only for filled slots
+      const moveBtn = name
+        ? `<button class="btn" data-move-from="${r.id}" data-move-idx="${idx}" type="button">Přesunout</button>`
+        : "";
+
       return `
         <div class="slotRow">
           <input data-room="${r.id}" data-idx="${idx}" id="${id}" type="text" placeholder="jméno" value="${(p || "").replace(/"/g, "&quot;")}" />
+          ${moveBtn}
           <button class="btn" data-clear="${id}" type="button">Smazat</button>
         </div>
       `;
@@ -119,6 +140,41 @@ function renderRoomsEditor(data) {
       if (!inp) return;
       inp.value = "";
       inp.dispatchEvent(new Event("input"));
+    });
+  });
+
+  // move buttons
+  editGrid.querySelectorAll("button[data-move-from]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const fromRoomId = btn.getAttribute("data-move-from");
+      const fromIdx = Number(btn.getAttribute("data-move-idx"));
+      const fromRoom = state.rooms.find(x => x.id === fromRoomId);
+      if (!fromRoom) return;
+      const personName = normalizeName(fromRoom.people[fromIdx]);
+      if (!personName) return;
+
+      const free = freeSlots(state);
+      if (!free.length) return alert("Nejsou volné sloty v žádném pokoji.");
+
+      // build options for prompt
+      const options = free.map((s, i) => `${i + 1}. ${s.label}`).join("\n");
+      const choice = prompt(`Kam přesunout ${personName}?\n\n${options}\n\nZadej číslo:`);
+      if (choice === null) return;
+
+      const ci = Number(choice) - 1;
+      if (!Number.isFinite(ci) || ci < 0 || ci >= free.length) return alert("Neplatná volba.");
+
+      const target = free[ci];
+      const toRoom = state.rooms.find(x => x.id === target.roomId);
+      if (!toRoom) return;
+
+      // swap: move person to target, clear source
+      toRoom.people[target.idx] = personName;
+      fromRoom.people[fromIdx] = "";
+
+      renderRoomsEditor(state);
+      renderAdminTable();
+      if (selectedName) renderSelectedPanel();
     });
   });
 }
@@ -311,6 +367,7 @@ async function loadFromGitHub() {
     inpTotal.value = String(state.totalCzk);
     inpAccount.value = state.paymentAccount || "";
     if (inpAirNote) inpAirNote.value = state.airNote || "";
+    if (inpMapAddress) inpMapAddress.value = state.mapAddress || "";
     if (inpBanner) inpBanner.value = state.banner || "";
     if (inpBannerVisible) inpBannerVisible.checked = !!state.bannerVisible;
     selectedName = "";
@@ -335,6 +392,7 @@ async function saveToGitHubNow() {
   state.totalCzk = Math.round(total);
   state.paymentAccount = (inpAccount.value || "").trim();
   state.airNote = (inpAirNote?.value || "").trim();
+  state.mapAddress = (inpMapAddress?.value || "").trim();
   state.banner = (inpBanner?.value || "").trim();
   state.bannerVisible = inpBannerVisible?.checked || false;
 
@@ -363,6 +421,7 @@ btnSave.addEventListener("click", saveToGitHubNow);
 inpTotal.value = String(state.totalCzk);
 inpAccount.value = state.paymentAccount || "";
 if (inpAirNote) inpAirNote.value = state.airNote || "";
+if (inpMapAddress) inpMapAddress.value = state.mapAddress || "";
 if (inpBanner) inpBanner.value = state.banner || "";
 if (inpBannerVisible) inpBannerVisible.checked = !!state.bannerVisible;
 renderRoomsEditor(state);
