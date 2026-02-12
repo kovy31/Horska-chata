@@ -112,8 +112,11 @@ function filledBeds(rooms) {
   return used;
 }
 
-function priceForFuturePosition(idx) {
-  return idx === 0 ? "A" : idx === 1 ? "B" : String(idx + 1);
+function slotLabel(idx, roomType) {
+  if (roomType === "kids") {
+    return ["A", "B", "C", "D"][idx] || String(idx + 1);
+  }
+  return String(idx + 1);
 }
 
 /**
@@ -217,7 +220,7 @@ function renderWhoGoes(data) {
 function renderPriceScale(data) {
   if (!elPriceScaleBody) return;
 
-  const total = Math.round(Number(data.totalCzk) || 0);
+  const { price: total, isEstimate } = effectivePrice(data);
   const { total: currentN } = countPeopleByType(data.rooms);
   const cap = totalCapacity(data.rooms);
 
@@ -302,6 +305,12 @@ function renderPriceScale(data) {
       <p>V\u0161echno je o domluv\u011b a pohod\u011b \u2764\ufe0f</p>
     </div>
 
+    <div style="margin-bottom:14px; padding:10px 14px; border-radius:8px; background:${isEstimate ? 'rgba(255,180,0,0.12)' : 'rgba(57,217,138,0.12)'}; border:1px solid ${isEstimate ? 'rgba(255,180,0,0.3)' : 'rgba(57,217,138,0.3)'};">
+      ${isEstimate
+        ? `<b>⚠️ Odhadovaná cena navýšená o 5 % kvůli kurzovému rozdílu:</b> ${formatCzk(total)}<br><span style="opacity:.7">Základní cena: ${formatCzk(Math.round(Number(data.totalCzk) || 0))}</span>`
+        : `<b>✅ Skutečná cena ubytování:</b> ${formatCzk(total)}`
+      }
+    </div>
     <h3 style="margin-bottom:8px;">Cenov\u00fd p\u0159ehled podle po\u010dtu lid\u00ed</h3>
     <div style="overflow-x:auto;">
       <table class="table">
@@ -327,7 +336,7 @@ function renderRooms(data) {
   const used = filledBeds(data.rooms);
   elCapStat.textContent = `${used}/${cap} obsazeno`;
 
-  const total = Math.round(Number(data.totalCzk) || 0);
+  const { price: total } = effectivePrice(data);
 
   // count per type for the stat line
   let doubleUsed = 0, doubleCap = 0, kidsUsed = 0, kidsCap = 0;
@@ -374,7 +383,7 @@ function renderRooms(data) {
     const roomFilled = people.filter(Boolean).length;
 
     const bedsHtml = people.map((p, i) => {
-      const label = priceForFuturePosition(i);
+      const label = slotLabel(i, origRoom.type);
 
       if (p) {
         // confirmed person -> show current computed price for their room type
@@ -517,7 +526,7 @@ function buildSpd({ iban, amountCzk, msg }) {
 function renderFinance(data) {
   elPayAccount.textContent = data.paymentAccount ? data.paymentAccount : "—";
 
-  const total = Math.round(Number(data.totalCzk) || 0);
+  const { price: total, isEstimate } = effectivePrice(data);
 
   let paid = 0;
   let refunded = 0;
@@ -530,6 +539,12 @@ function renderFinance(data) {
   const surplus = Math.max(0, paid - total);
 
   elTotal.textContent = formatCzk(total);
+  const elTotalNote = document.getElementById("kpiTotalNote");
+  if (elTotalNote) {
+    elTotalNote.textContent = isEstimate
+      ? "Odhadovaná cena navýšená o 5 % (kurzový rozdíl)"
+      : "Skutečná cena";
+  }
   elPaid.textContent = formatCzk(paid);
   elNeed.textContent = formatCzk(need);
   elSurplus.textContent = formatCzk(surplus);
@@ -565,11 +580,13 @@ function renderFinance(data) {
   for (const name of names) {
     const rec = data.people?.[name] || { payments: [], refunds: [] };
     const paidOne = (rec.payments || []).reduce((s, x) => s + (Math.round(Number(x.amount) || 0)), 0);
+    const refundedOne = (rec.refunds || []).reduce((s, x) => s + (Math.round(Number(x.amount) || 0)), 0);
+    const reallyPaidOne = paidOne - refundedOne; // skutečně uhrazeno po odečtení vratek
 
     const room = nameToRoom.get(name) || "—";
     const mustPay = shouldPayFor(name);
 
-    const delta = paidOne - mustPay; // + means overpaid
+    const delta = reallyPaidOne - mustPay; // + means overpaid
     const deltaClass = delta === 0 ? "settlement-ok" : (delta > 0 ? "settlement-over" : "settlement-under");
     const deltaText =
       delta === 0 ? "OK" :
@@ -592,7 +609,7 @@ function renderFinance(data) {
       <td>${name}</td>
       <td class="center">${room}</td>
       <td class="center">${formatCzk(mustPay)}</td>
-      <td class="center">${formatCzk(paidOne)}</td>
+      <td class="center">${formatCzk(reallyPaidOne)}</td>
       <td class="center"><button class="btn tiny ${deltaClass}" data-info="1" data-name="${name}">${deltaText}</button></td>
       <td class="center">${qrBtn || "—"}</td>
     `;
@@ -611,7 +628,7 @@ function renderFinance(data) {
       </div>
       <div class="mobileCardBody">
         <span>Má platit: <b>${formatCzk(mustPay)}</b></span>
-        <span>Zaplaceno: <b>${formatCzk(paidOne)}</b></span>
+        <span>Uhrazeno: <b>${formatCzk(reallyPaidOne)}</b></span>
       </div>
       <div class="mobileCardActions">
         <button class="btn tiny" data-info="1" data-name="${name}">Detail</button>
@@ -636,15 +653,19 @@ function renderFinance(data) {
         .join("") || "<li class='emptyNote'>Žádné vratky</li>";
 
       const mustPay = shouldPayFor(name);
-      const paidOne = (rec.payments || []).reduce((s, x) => s + (Math.round(Number(x.amount) || 0)), 0);
-      const delta = paidOne - mustPay;
+      const paidModal = (rec.payments || []).reduce((s, x) => s + (Math.round(Number(x.amount) || 0)), 0);
+      const refundedModal = (rec.refunds || []).reduce((s, x) => s + (Math.round(Number(x.amount) || 0)), 0);
+      const reallyPaidModal = paidModal - refundedModal;
+      const delta = reallyPaidModal - mustPay;
       const deltaClass = delta === 0 ? "settlement-ok" : (delta > 0 ? "settlement-over" : "settlement-under");
       const deltaText = delta === 0 ? "OK" : (delta > 0 ? `+${formatCzk(delta)}` : `${formatCzk(Math.abs(delta))}`);
 
       openInfoModal("Vyrovnání", name, `
         <div class="infoKpi">
           <div class="infoKpiItem"><span class="infoKpiLabel">Má platit</span><span class="infoKpiValue">${formatCzk(mustPay)}</span></div>
-          <div class="infoKpiItem"><span class="infoKpiLabel">Zaplaceno</span><span class="infoKpiValue">${formatCzk(paidOne)}</span></div>
+          <div class="infoKpiItem"><span class="infoKpiLabel">Celkem zaplaceno</span><span class="infoKpiValue">${formatCzk(paidModal)}</span></div>
+          <div class="infoKpiItem"><span class="infoKpiLabel">Vráceno</span><span class="infoKpiValue">${formatCzk(refundedModal)}</span></div>
+          <div class="infoKpiItem"><span class="infoKpiLabel">Reálně uhrazeno</span><span class="infoKpiValue">${formatCzk(reallyPaidModal)}</span></div>
           <div class="infoKpiItem"><span class="infoKpiLabel">Vyrovnání</span><span class="infoKpiValue ${deltaClass}">${deltaText}</span></div>
         </div>
         <div class="infoSection"><b>Platby</b><ul>${p}</ul></div>
@@ -706,6 +727,99 @@ function initSlider() {
   }
 }
 
+// -------- render all dynamic data --------
+let _lastMapKey = ""; // track map changes to avoid iframe reload
+
+function renderAllData(data) {
+  // airNote
+  if (data.airNote) {
+    elAirNote.innerHTML = data.airNote;
+    elAirNote.style.display = "block";
+  } else {
+    elAirNote.innerHTML = "";
+    elAirNote.style.display = "none";
+  }
+
+  // map – only update iframe if address/zoom changed
+  if (data.mapAddress && elMapWrap) {
+    const q = encodeURIComponent(data.mapAddress);
+    const z = data.mapZoom || 14;
+    const mapKey = `${data.mapAddress}|${z}`;
+    const mapNoteHtml = data.mapNote
+      ? `<div class="mapNote" style="margin-top:10px; text-align:center; line-height:1.6; opacity:.85;">${data.mapNote}</div>`
+      : "";
+
+    if (mapKey !== _lastMapKey) {
+      // full rebuild (iframe changed)
+      elMapWrap.innerHTML = `
+        <div class="mapEmbed">
+          <iframe src="https://maps.google.com/maps?q=${q}&output=embed&z=${z}" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+        ${mapNoteHtml}`;
+      _lastMapKey = mapKey;
+    } else {
+      // only update note text
+      const existingNote = elMapWrap.querySelector(".mapNote");
+      if (data.mapNote) {
+        if (existingNote) {
+          existingNote.innerHTML = data.mapNote;
+        } else {
+          elMapWrap.insertAdjacentHTML("beforeend", mapNoteHtml);
+        }
+      } else if (existingNote) {
+        existingNote.remove();
+      }
+    }
+    elMapWrap.style.display = "block";
+  } else if (elMapWrap) {
+    elMapWrap.style.display = "none";
+  }
+
+  // banner
+  if (data.bannerVisible && data.banner) {
+    elBannerWrap.innerHTML = `<div class="banner">${data.banner}</div>`;
+    elBannerWrap.style.display = "block";
+  } else {
+    elBannerWrap.innerHTML = "";
+    elBannerWrap.style.display = "none";
+  }
+
+  // Update Airbnb card price badge dynamically
+  const { price: effPrice, isEstimate: effIsEstimate } = effectivePrice(data);
+  const priceBadges = document.querySelectorAll(".airBadge");
+  for (const badge of priceBadges) {
+    if (badge.textContent.includes("Kč")) {
+      badge.textContent = `💰 ${formatCzk(effPrice)}${effIsEstimate ? " (odhad +5 %)" : ""}`;
+    }
+  }
+  const airPriceEl = document.querySelector(".airPrice");
+  if (airPriceEl) airPriceEl.textContent = formatCzk(effPrice);
+
+  renderWhoGoes(data);
+  renderPriceScale(data);
+  renderRooms(data);
+  renderFinance(data);
+}
+
+// -------- AUTO-REFRESH (polling) --------
+const REFRESH_INTERVAL_MS = 30000; // 30 sekund
+let _refreshTimer = null;
+
+async function refreshData() {
+  try {
+    const data = await loadDataFromGitHub();
+    renderAllData(data);
+  } catch (e) {
+    console.warn("Auto-refresh failed:", e.message);
+    // tiše ignorovat – příští pokus za 30s
+  }
+}
+
+function startAutoRefresh() {
+  if (_refreshTimer) clearInterval(_refreshTimer);
+  _refreshTimer = setInterval(refreshData, REFRESH_INTERVAL_MS);
+}
+
 // -------- INITIALIZATION --------
 (async function init() {
   // show loading state
@@ -717,36 +831,11 @@ function initSlider() {
 
   try {
     const data = await loadDataFromGitHub();
-
-    // airNote
-    if (data.airNote) {
-      elAirNote.innerHTML = data.airNote;
-      elAirNote.style.display = "block";
-    }
-
-    // map
-    if (data.mapAddress && elMapWrap) {
-      const q = encodeURIComponent(data.mapAddress);
-      const z = data.mapZoom || 14;
-      elMapWrap.innerHTML = `
-        <div class="mapEmbed">
-          <iframe src="https://maps.google.com/maps?q=${q}&output=embed&z=${z}" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-        </div>
-        <div class="mapAddress">${data.mapAddress}</div>`;
-      elMapWrap.style.display = "block";
-    }
-
-    // banner
-    if (data.bannerVisible && data.banner) {
-      elBannerWrap.innerHTML = `<div class="banner">${data.banner}</div>`;
-      elBannerWrap.style.display = "block";
-    }
-
-    renderWhoGoes(data);
-    renderPriceScale(data);
-    renderRooms(data);
-    renderFinance(data);
+    renderAllData(data);
     ensureAirHousingLayout();
+
+    // spustit automatickou aktualizaci
+    startAutoRefresh();
   } catch (e) {
     console.error("Failed to load data:", e);
     elRoomsGrid.innerHTML = '<div class="loadingMsg" style="color:var(--bad)">Nepodařilo se načíst data. Zkuste obnovit stránku.</div>';
