@@ -465,6 +465,8 @@ h1{ margin:0; font-size:22px; letter-spacing:.2px; }
   font-size:18px;
 }
 details[open] .chev{ transform: rotate(180deg); }
+/* odsazení obsahu v accordion blocích */
+#priceScaleBody{ padding-left:14px; padding-right:14px; }
 
 .payBox{
   margin: 0 14px 12px;
