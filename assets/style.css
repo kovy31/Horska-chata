@@ -471,6 +471,32 @@ h1{ margin:0; font-size:22px; letter-spacing:.2px; }
   border:1px dashed rgba(255,255,255,.16);
 }
 
+.entryRow{
+  align-items:stretch;
+}
+.entryFields{
+  flex:1;
+  min-width:0;
+  display:grid;
+  gap:8px;
+}
+.entryFields input{
+  width:100%;
+}
+.entryRow .btn{
+  flex-shrink:0;
+  align-self:flex-end;
+}
+@media (max-width:640px){
+  .entryRow{
+    flex-direction:column;
+  }
+  .entryRow .btn{
+    width:100%;
+    align-self:stretch;
+  }
+}
+
 .who{ font-weight:900; }
 .miniTag{
   font-size:11px;
