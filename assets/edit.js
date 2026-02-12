@@ -1,529 +1,255 @@
-// assets/edit.js
-let state = defaultData();
-let selectedName = "";
+// assets/common.js
+const CFG = window.APP_CONFIG;
 
-// dom
-const inpTotal = document.getElementById("inpTotal");
-const inpAccount = document.getElementById("inpAccount");
-const inpAirNote = document.getElementById("inpAirNote");
-const inpMapAddress = document.getElementById("inpMapAddress");
-const inpMapZoom = document.getElementById("inpMapZoom");
-const mapZoomVal = document.getElementById("mapZoomVal");
-const inpBanner = document.getElementById("inpBanner");
-const inpBannerVisible = document.getElementById("inpBannerVisible");
-const inpToken = document.getElementById("inpToken");
+// ---- utils ----
+function formatCzk(n) {
+  const v = Math.round(Number(n) || 0);
+  return v.toLocaleString("cs-CZ") + " Kč";
+}
+function normalizeName(s) {
+  return (s || "").trim().replace(/\s+/g, " ");
+}
+function todayISO() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
-const kpiPaid = document.getElementById("kpiPaid");
-const kpiRefunded = document.getElementById("kpiRefunded");
-const kpiSurplus = document.getElementById("kpiSurplus");
-
-const adminBody = document.querySelector("#adminTable tbody");
-const adminEmpty = document.getElementById("adminEmpty");
-
-const selTitle = document.getElementById("selTitle");
-const selMeta = document.getElementById("selMeta");
-
-const payListAdmin = document.getElementById("payListAdmin");
-const refundListAdmin = document.getElementById("refundListAdmin");
-
-const suggestPay = document.getElementById("suggestPay");
-const suggestRefund = document.getElementById("suggestRefund");
-const suggestHint = document.getElementById("suggestHint");
-
-const btnAddPay = document.getElementById("btnAddPay");
-const btnAddRefund = document.getElementById("btnAddRefund");
-const btnLoad = document.getElementById("btnLoad");
-const btnSave = document.getElementById("btnSave");
-
-const editGrid = document.getElementById("editGrid");
-const unassignedWrap = document.getElementById("unassignedWrap");
-const unassignedList = document.getElementById("unassignedList");
-const inpUnassignedAdd = document.getElementById("inpUnassignedAdd");
-const btnUnassignedAdd = document.getElementById("btnUnassignedAdd");
-
-// ---- helpers ----
-function listParticipantsInOrder(data) {
-  const arr = [];
-  for (const r of data.rooms || []) {
+// ---- pricing helpers (shared by view + edit) ----
+function countPeopleByType(rooms) {
+  let total = 0;
+  let kids = 0;
+  for (const r of rooms || []) {
+    const isKidsRoom = r.type === "kids";
     for (const p of (r.people || [])) {
-      const name = normalizeName(p);
-      if (name) arr.push({ name, room: r.name || "—" });
+      const n = normalizeName(p);
+      if (!n) continue;
+      total++;
+      if (isKidsRoom) kids++;
     }
   }
-  const seen = new Set();
-  const out = [];
-  for (const x of arr) {
-    if (seen.has(x.name)) continue;
-    seen.add(x.name);
-    out.push(x);
-  }
-  out.sort((a, b) => a.name.localeCompare(b.name, "cs"));
-  return out;
+  return { total, kids, adults: Math.max(0, total - kids) };
 }
 
-function sumEntries(list) {
-  return (list || []).reduce((s, x) => s + (Math.round(Number(x.amount) || 0)), 0);
-}
+/**
+ * Pricing rules:
+ * - If n <= 10: everyone share = total/10 (minimum)
+ * - If 11 <= n <= 14: everyone share = total/n
+ * - If n >= 15: kids share = 0.75 * standardShare, adults share = 1.0 * standardShare
+ *   where standardShare = total / (adults + 0.75*kids)
+ */
+function computeShares(totalCzk, nAdults, nKids) {
+  const total = Math.round(Number(totalCzk) || 0);
+  const n = Math.max(0, nAdults + nKids);
 
-function cleanupEmptyEntries(rec) {
-  if (!rec) return;
-  rec.payments = (rec.payments || []).filter(x => Number(x.amount) > 0);
-  rec.refunds = (rec.refunds || []).filter(x => Number(x.amount) > 0);
-}
-
-function cleanupPeopleNotInRooms() {
-  const alive = new Set(listParticipantsInOrder(state).map(x => x.name));
-  for (const k of Object.keys(state.people || {})) {
-    if (!alive.has(k)) delete state.people[k];
-  }
-}
-
-// ---- rooms editor ----
-function freeSlots(data, excludeRoomId) {
-  const out = [];
-  for (const r of data.rooms || []) {
-    for (let i = 0; i < (r.people || []).length; i++) {
-      if (!normalizeName(r.people[i])) {
-        out.push({ roomId: r.id, idx: i, label: `${r.name || r.id} · Místo ${i + 1}` });
-      }
-    }
-  }
-  return out;
-}
-
-function renderRoomsEditor(data) {
-  editGrid.innerHTML = "";
-  for (const r of data.rooms || []) {
-    const card = document.createElement("div");
-    card.className = "roomEdit";
-    const slots = (r.people || []).map((p, idx) => {
-      const id = `${r.id}_${idx}`;
-      const name = normalizeName(p);
-
-      // move button only for filled slots
-      const moveBtn = name
-        ? `<button class="btn" data-move-from="${r.id}" data-move-idx="${idx}" type="button">Přesunout</button>`
-        : "";
-
-      return `
-        <div class="slotRow">
-          <input data-room="${r.id}" data-idx="${idx}" id="${id}" type="text" placeholder="jméno" value="${(p || "").replace(/"/g, "&quot;")}" />
-          ${moveBtn}
-          <button class="btn" data-clear="${id}" type="button">Smazat</button>
-        </div>
-      `;
-    }).join("");
-
-    card.innerHTML = `
-      <div class="roomEditTop">
-        <div>
-          <div class="roomEditName">${r.name || "Pokoj"}</div>
-          <div class="roomEditMeta">${r.type === "kids" ? "Dětský pokoj" : "Dvoulůžko"} · ${r.id}</div>
-        </div>
-      </div>
-      <div class="slots">${slots}</div>
-    `;
-
-    editGrid.appendChild(card);
+  // minimum "lákací" cena
+  if (n <= 10) {
+    const per = total / 10;
+    return { mode: "min10", standard: per, kids: per, adults: per };
   }
 
-  editGrid.querySelectorAll("input[data-room]").forEach(inp => {
-    inp.addEventListener("input", () => {
-      const rid = inp.getAttribute("data-room");
-      const idx = Number(inp.getAttribute("data-idx"));
-      const room = state.rooms.find(x => x.id === rid);
-      if (!room) return;
-      room.people[idx] = normalizeName(inp.value);
-      renderAdminTable();
-      if (selectedName) renderSelectedPanel();
-    });
+  if (n <= 14) {
+    const per = total / n;
+    return { mode: "divide", standard: per, kids: per, adults: per };
+  }
+
+  // >= 15, kids discount 25%
+  const weight = (nAdults + 0.75 * nKids);
+  const std = weight > 0 ? (total / weight) : 0;
+  return { mode: "kids25", standard: std, kids: 0.75 * std, adults: std };
+}
+
+function roundCzk(x) {
+  return Math.round(Number(x) || 0);
+}
+
+/**
+ * Effective price for all calculations:
+ * - If actualCzk is set (chata zaplacena), use it
+ * - Otherwise use totalCzk * 1.05 (5% navýšení pro kurzový rozdíl)
+ */
+function effectivePrice(data) {
+  const actual = Number(data.actualCzk);
+  if (Number.isFinite(actual) && actual > 0) {
+    return { price: Math.round(actual), isEstimate: false };
+  }
+  const base = Math.round(Number(data.totalCzk) || 0);
+  return { price: Math.round(base * 1.05), isEstimate: true };
+}
+
+// ---- data model ----
+function defaultData() {
+  return {
+    version: 8,
+    airNote: "",
+    banner: "",        // text banneru nad pokoji (např. "Pro rezervaci chaty...")
+    bannerVisible: false, // zobrazit banner na hlavní stránce?
+    mapAddress: "",    // adresa pro Google Maps embed
+    mapZoom: 14,       // zoom úroveň pro Google Maps (3-18)
+    mapNote: "",       // editovatelný text pod mapou (adresa ubytování apod.)
+    totalCzk: CFG.DEFAULT_TOTAL_CZK,
+    actualCzk: 0,  // skutečná cena po zaplacení chaty (0 = neznámá)
+    paymentAccount: "",
+    rooms: [
+      { id: "R1", type: "double", name: "Pokoj 1", people: ["", ""] },
+      { id: "R2", type: "double", name: "Pokoj 2", people: ["", ""] },
+      { id: "R3", type: "double", name: "Pokoj 3", people: ["", ""] },
+      { id: "R4", type: "double", name: "Pokoj 4", people: ["", ""] },
+      { id: "R5", type: "double", name: "Pokoj 5", people: ["", ""] },
+      { id: "R6", type: "double", name: "Pokoj 6", people: ["", ""] },
+      { id: "R7", type: "double", name: "Pokoj 7", people: ["", ""] },
+      { id: "K1", type: "kids",   name: "Dětský pokoj", people: ["", "", "", ""] }
+    ],
+    unassigned: [], // names parked outside rooms
+    people: {} // { name: { payments:[{amount,date}], refunds:[{amount,date}] } }
+  };
+}
+
+// ---- GitHub Issue storage ----
+const DATA_START = "<!--DATA_START-->";
+const DATA_END   = "<!--DATA_END-->";
+
+function buildIssueBody(jsonString) {
+  return [
+    "Tento Issue slouží jako databáze pro přehled ubytování + finance.",
+    "",
+    DATA_START,
+    jsonString,
+    DATA_END,
+    ""
+  ].join("\n");
+}
+
+function extractJsonFromIssueBody(body) {
+  if (!body) return null;
+  const s = body.indexOf(DATA_START);
+  const e = body.indexOf(DATA_END);
+  if (s === -1 || e === -1 || e <= s) return null;
+  const jsonText = body.slice(s + DATA_START.length, e).trim();
+
+  return jsonText || null;
+}
+
+async function ghFetch(path, opts = {}) {
+  const url = `https://api.github.com${path}`;
+  const res = await fetch(url, {
+    headers: {
+      "Accept": "application/vnd.github+json",
+      ...(opts.token ? { "Authorization": `Bearer ${opts.token}` } : {})
+    },
+    method: opts.method || "GET",
+    body: opts.body ? JSON.stringify(opts.body) : undefined
   });
 
-  editGrid.querySelectorAll("button[data-clear]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const id = btn.getAttribute("data-clear");
-      const inp = document.getElementById(id);
-      if (!inp) return;
-      inp.value = "";
-      inp.dispatchEvent(new Event("input"));
-    });
-  });
-
-  // move buttons
-  editGrid.querySelectorAll("button[data-move-from]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const fromRoomId = btn.getAttribute("data-move-from");
-      const fromIdx = Number(btn.getAttribute("data-move-idx"));
-      const fromRoom = state.rooms.find(x => x.id === fromRoomId);
-      if (!fromRoom) return;
-      const personName = normalizeName(fromRoom.people[fromIdx]);
-      if (!personName) return;
-
-      const free = freeSlots(state);
-      // always add "outside" option
-      const options = free.map((s, i) => `${i + 1}. ${s.label}`);
-      options.push(`${free.length + 1}. Mimo pokoje (nepřiřazení)`);
-
-      const choice = prompt(`Kam přesunout ${personName}?\n\n${options.join("\n")}\n\nZadej číslo:`);
-      if (choice === null) return;
-
-      const ci = Number(choice) - 1;
-      if (!Number.isFinite(ci) || ci < 0 || ci > free.length) return alert("Neplatná volba.");
-
-      if (ci === free.length) {
-        // move to unassigned
-        fromRoom.people[fromIdx] = "";
-        if (!state.unassigned) state.unassigned = [];
-        state.unassigned.push(personName);
-      } else {
-        const target = free[ci];
-        const toRoom = state.rooms.find(x => x.id === target.roomId);
-        if (!toRoom) return;
-        toRoom.people[target.idx] = personName;
-        fromRoom.people[fromIdx] = "";
-      }
-
-      renderRoomsEditor(state);
-      renderUnassigned();
-      renderAdminTable();
-      if (selectedName) renderSelectedPanel();
-    });
-  });
-}
-
-// ---- unassigned people ----
-function renderUnassigned() {
-  if (!state.unassigned) state.unassigned = [];
-  const list = state.unassigned.filter(n => normalizeName(n));
-
-  if (!list.length) {
-    unassignedWrap.style.display = "none";
-    return;
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`GitHub API error ${res.status}: ${text || res.statusText}`);
   }
-
-  unassignedWrap.style.display = "block";
-  unassignedList.innerHTML = list.map((name, idx) => `
-    <div class="slotRow">
-      <input type="text" value="${name.replace(/"/g, "&quot;")}" disabled style="opacity:.7;" />
-      <button class="btn" data-assign="${idx}" type="button">Přiřadit do pokoje</button>
-      <button class="btn" data-remove-unassigned="${idx}" type="button">Smazat</button>
-    </div>
-  `).join("");
-
-  // assign to room
-  unassignedList.querySelectorAll("button[data-assign]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const idx = Number(btn.getAttribute("data-assign"));
-      const personName = state.unassigned[idx];
-      if (!personName) return;
-
-      const free = freeSlots(state);
-      if (!free.length) return alert("Nejsou volné sloty v žádném pokoji.");
-
-      const options = free.map((s, i) => `${i + 1}. ${s.label}`).join("\n");
-      const choice = prompt(`Kam přiřadit ${personName}?\n\n${options}\n\nZadej číslo:`);
-      if (choice === null) return;
-
-      const ci = Number(choice) - 1;
-      if (!Number.isFinite(ci) || ci < 0 || ci >= free.length) return alert("Neplatná volba.");
-
-      const target = free[ci];
-      const toRoom = state.rooms.find(x => x.id === target.roomId);
-      if (!toRoom) return;
-
-      toRoom.people[target.idx] = personName;
-      state.unassigned.splice(idx, 1);
-
-      renderRoomsEditor(state);
-      renderUnassigned();
-      renderAdminTable();
-      if (selectedName) renderSelectedPanel();
-    });
-  });
-
-  // remove from unassigned
-  unassignedList.querySelectorAll("button[data-remove-unassigned]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const idx = Number(btn.getAttribute("data-remove-unassigned"));
-      if (!confirm(`Smazat ${state.unassigned[idx]}?`)) return;
-      state.unassigned.splice(idx, 1);
-      renderUnassigned();
-      renderAdminTable();
-      if (selectedName) renderSelectedPanel();
-    });
-  });
+  return res.json();
 }
 
-// ---- pricing for admin ----
-function nameToRoomType(data, name) {
-  for (const r of data.rooms || []) {
-    for (const p of (r.people || [])) {
-      if (normalizeName(p) === name) return r.type === "kids" ? "kids" : "adult";
-    }
+async function loadDataFromGitHub() {
+  const issues = await ghFetch(`/repos/${CFG.OWNER}/${CFG.REPO}/issues?state=all&per_page=100`);
+  const found = issues.find(i => (i.title || "") === CFG.ISSUE_TITLE);
+  if (!found) return defaultData();
+
+  const issue = await ghFetch(`/repos/${CFG.OWNER}/${CFG.REPO}/issues/${found.number}`);
+  const jsonText = extractJsonFromIssueBody(issue.body);
+  if (!jsonText) return defaultData();
+
+  try {
+    return sanitizeData(JSON.parse(jsonText));
+  } catch {
+    return defaultData();
   }
-  return "adult";
 }
 
-function shouldPayAmount(data, name) {
-  const total = Math.round(Number(data.totalCzk) || 0);
-  const { kids, adults } = countPeopleByType(data.rooms);
-  const shares = computeShares(total, adults, kids);
-  const t = nameToRoomType(data, name);
-  const raw = t === "kids" ? shares.kids : shares.adults;
-  return roundCzk(raw);
-}
+async function saveDataToGitHub(data, token) {
+  const issues = await ghFetch(`/repos/${CFG.OWNER}/${CFG.REPO}/issues?state=all&per_page=100`, { token });
+  let found = issues.find(i => (i.title || "") === CFG.ISSUE_TITLE);
 
-// ---- admin table ----
-function renderAdminTable() {
-  const people = listParticipantsInOrder(state);
-  adminBody.innerHTML = "";
+  const jsonString = JSON.stringify(data, null, 2);
+  const body = buildIssueBody(jsonString);
 
-  if (!people.length) {
-    adminEmpty.style.display = "block";
+  if (!found) {
+    const created = await ghFetch(`/repos/${CFG.OWNER}/${CFG.REPO}/issues`, {
+      token,
+      method: "POST",
+      body: { title: CFG.ISSUE_TITLE, body }
+    });
+    found = created;
   } else {
-    adminEmpty.style.display = "none";
-  }
-
-  let totalPaid = 0;
-  let totalRefunded = 0;
-
-  for (const p of people) {
-    const rec = state.people[p.name] || { payments: [], refunds: [] };
-    const paid = sumEntries(rec.payments);
-    const refunded = sumEntries(rec.refunds);
-    totalPaid += paid;
-    totalRefunded += refunded;
-
-    const mustPay = shouldPayAmount(state, p.name);
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><button class="btn" data-sel="${p.name}" type="button">${p.name}</button></td>
-      <td class="center">${p.room}</td>
-      <td class="center">${formatCzk(mustPay)}</td>
-      <td class="center">${formatCzk(paid)}</td>
-      <td class="center">${formatCzk(refunded)}</td>
-    `;
-    adminBody.appendChild(tr);
-  }
-
-  const surplus = Math.max(0, totalPaid - Math.round(Number(state.totalCzk) || 0));
-  kpiPaid.textContent = formatCzk(totalPaid);
-  kpiRefunded.textContent = formatCzk(totalRefunded);
-  kpiSurplus.textContent = formatCzk(surplus);
-
-  adminBody.querySelectorAll("button[data-sel]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      selectedName = btn.getAttribute("data-sel") || "";
-      renderSelectedPanel();
+    await ghFetch(`/repos/${CFG.OWNER}/${CFG.REPO}/issues/${found.number}`, {
+      token,
+      method: "PATCH",
+      body: { body }
     });
-  });
-}
-
-// ---- selected panel ----
-function renderSelectedPanel() {
-  if (!selectedName) {
-    selTitle.textContent = "—";
-    selMeta.textContent = "Vyber jméno vlevo.";
-    payListAdmin.innerHTML = "";
-    refundListAdmin.innerHTML = "";
-    suggestHint.style.display = "none";
-    return;
-  }
-
-  const meta = listParticipantsInOrder(state).find(x => x.name === selectedName);
-  const mustPay = shouldPayAmount(state, selectedName);
-  selTitle.textContent = selectedName;
-  selMeta.textContent = (meta ? meta.room : "—") + ` · Má platit: ${formatCzk(mustPay)}`;
-
-  if (!state.people[selectedName]) state.people[selectedName] = { payments: [], refunds: [] };
-  const rec = state.people[selectedName];
-
-  suggestHint.style.display = "block";
-  suggestHint.textContent = "Přidání položky nastaví dnešní datum – případně ho uprav níž.";
-
-  payListAdmin.innerHTML = renderHistoryList(rec.payments, "payments");
-  refundListAdmin.innerHTML = renderHistoryList(rec.refunds, "refunds");
-
-  bindHistoryButtons(rec);
-
-  suggestPay.value = "";
-  suggestRefund.value = "";
-}
-
-function renderHistoryList(list, kind) {
-  const arr = (list || []).slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  if (!arr.length) return `<div class="subSmall">—</div>`;
-  return arr.map((x, idx) => `
-    <div class="roomCard" style="margin-bottom:8px;">
-      <div class="roomTop">
-        <div>
-          <div class="roomName">${formatCzk(x.amount)}</div>
-          <div class="roomMeta">${x.date || "—"}</div>
-        </div>
-        <div style="display:flex; gap:8px;">
-          <button class="btn" data-edit="${kind}" data-idx="${idx}" type="button">Upravit</button>
-          <button class="btn" data-del="${kind}" data-idx="${idx}" type="button">Smazat</button>
-        </div>
-      </div>
-    </div>
-  `).join("");
-}
-
-function bindHistoryButtons(rec) {
-  document.querySelectorAll("button[data-del]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const kind = btn.getAttribute("data-del");
-      const idx = Number(btn.getAttribute("data-idx"));
-      if (!Number.isFinite(idx)) return;
-      if (!confirm("Smazat položku?")) return;
-      rec[kind].splice(idx, 1);
-      cleanupEmptyEntries(rec);
-      renderAdminTable();
-      renderSelectedPanel();
-    });
-  });
-
-  document.querySelectorAll("button[data-edit]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const kind = btn.getAttribute("data-edit");
-      const idx = Number(btn.getAttribute("data-idx"));
-      const item = rec[kind]?.[idx];
-      if (!item) return;
-
-      const amount = prompt("Částka (Kč):", String(item.amount || ""));
-      if (amount === null) return;
-      const a = Math.round(Number(amount) || 0);
-      if (!(a > 0)) return alert("Neplatná částka.");
-
-      const date = prompt("Datum (YYYY-MM-DD):", item.date || todayISO());
-      if (date === null) return;
-      const d = String(date || "").trim() || todayISO();
-
-      item.amount = a;
-      item.date = d;
-
-      cleanupEmptyEntries(rec);
-      renderAdminTable();
-      renderSelectedPanel();
-    });
-  });
-}
-
-// ---- add quick entries ----
-btnAddPay.addEventListener("click", () => {
-  if (!selectedName) return alert("Nejdřív vyber jméno.");
-  const a = Math.round(Number(suggestPay.value) || 0);
-  if (!(a > 0)) return alert("Neplatná částka.");
-  const rec = state.people[selectedName] || (state.people[selectedName] = { payments: [], refunds: [] });
-  rec.payments.push({ amount: a, date: todayISO() });
-  cleanupEmptyEntries(rec);
-  renderAdminTable();
-  renderSelectedPanel();
-});
-
-btnAddRefund.addEventListener("click", () => {
-  if (!selectedName) return alert("Nejdřív vyber jméno.");
-  const a = Math.round(Number(suggestRefund.value) || 0);
-  if (!(a > 0)) return alert("Neplatná částka.");
-  const rec = state.people[selectedName] || (state.people[selectedName] = { payments: [], refunds: [] });
-  rec.refunds.push({ amount: a, date: todayISO() });
-  cleanupEmptyEntries(rec);
-  renderAdminTable();
-  renderSelectedPanel();
-});
-
-// ---- load/save ----
-async function loadFromGitHub() {
-  btnLoad.disabled = true;
-  btnLoad.textContent = "Načítám…";
-  try {
-    state = await loadDataFromGitHub();
-    inpTotal.value = String(state.totalCzk);
-    inpAccount.value = state.paymentAccount || "";
-    if (inpAirNote) inpAirNote.value = state.airNote || "";
-    if (inpMapAddress) inpMapAddress.value = state.mapAddress || "";
-    if (inpMapZoom) { inpMapZoom.value = String(state.mapZoom || 14); mapZoomVal.textContent = inpMapZoom.value; }
-    if (inpBanner) inpBanner.value = state.banner || "";
-    if (inpBannerVisible) inpBannerVisible.checked = !!state.bannerVisible;
-    selectedName = "";
-    renderRoomsEditor(state);
-    renderUnassigned();
-    renderAdminTable();
-    renderSelectedPanel();
-  } catch (e) {
-    alert("Nepodařilo se načíst:\n" + e.message);
-  } finally {
-    btnLoad.disabled = false;
-    btnLoad.textContent = "Načíst";
   }
 }
 
-async function saveToGitHubNow() {
-  const token = (inpToken.value || "").trim();
-  if (!token) return alert("Pro uložení zadej GitHub token.");
-
-  const total = Number(inpTotal.value);
-  if (!Number.isFinite(total) || total <= 0) return alert("Neplatná celková cena.");
-
-  state.totalCzk = Math.round(total);
-  state.paymentAccount = (inpAccount.value || "").trim();
-  state.airNote = (inpAirNote?.value || "").trim();
-  state.mapAddress = (inpMapAddress?.value || "").trim();
-  state.mapZoom = Number(inpMapZoom?.value) || 14;
-  state.banner = (inpBanner?.value || "").trim();
-  state.bannerVisible = inpBannerVisible?.checked || false;
-
-  cleanupPeopleNotInRooms();
-  for (const name of Object.keys(state.people || {})) {
-    cleanupEmptyEntries(state.people[name]);
+function sanitizeEntryList(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const it of list) {
+    if (!it || typeof it !== "object") continue;
+    const a = Math.round(Number(it.amount) || 0);
+    const d = typeof it.date === "string" ? it.date.trim() : "";
+    if (a > 0) out.push({ amount: a, date: d || todayISO() });
   }
-
-  btnSave.disabled = true;
-  btnSave.textContent = "Ukládám…";
-  try {
-    await saveDataToGitHub(state, token);
-    alert("Uloženo do GitHub Issue.");
-  } catch (e) {
-    alert("Nepodařilo se uložit:\n" + e.message);
-  } finally {
-    btnSave.disabled = false;
-    btnSave.textContent = "Uložit";
-  }
+  return out;
 }
 
-btnLoad.addEventListener("click", loadFromGitHub);
-btnSave.addEventListener("click", saveToGitHubNow);
+function sanitizeData(data) {
+  const d = defaultData();
+  if (!data || typeof data !== "object") return d;
 
-// init
-inpTotal.value = String(state.totalCzk);
-inpAccount.value = state.paymentAccount || "";
-if (inpAirNote) inpAirNote.value = state.airNote || "";
-if (inpMapAddress) inpMapAddress.value = state.mapAddress || "";
-if (inpMapZoom) { inpMapZoom.value = String(state.mapZoom || 14); mapZoomVal.textContent = inpMapZoom.value; }
-if (inpBanner) inpBanner.value = state.banner || "";
-if (inpBannerVisible) inpBannerVisible.checked = !!state.bannerVisible;
-renderRoomsEditor(state);
-renderUnassigned();
-renderAdminTable();
-renderSelectedPanel();
+  const total = Number(data.totalCzk);
+  d.totalCzk = Number.isFinite(total) && total > 0 ? Math.round(total) : d.totalCzk;
 
-// zoom slider live update
-if (inpMapZoom) {
-  inpMapZoom.addEventListener("input", () => {
-    mapZoomVal.textContent = inpMapZoom.value;
-  });
+  const actualCzk = Number(data.actualCzk);
+  d.actualCzk = Number.isFinite(actualCzk) && actualCzk > 0 ? Math.round(actualCzk) : 0;
+
+  d.paymentAccount = typeof data.paymentAccount === "string" ? data.paymentAccount.trim() : "";
+  d.airNote = typeof data.airNote === "string" ? data.airNote.trim() : "";
+  d.banner = typeof data.banner === "string" ? data.banner.trim() : "";
+  d.bannerVisible = !!data.bannerVisible;
+  d.mapAddress = typeof data.mapAddress === "string" ? data.mapAddress.trim() : "";
+  d.mapNote = typeof data.mapNote === "string" ? data.mapNote.trim() : "";
+  const mz = Number(data.mapZoom);
+  d.mapZoom = Number.isFinite(mz) && mz >= 3 && mz <= 18 ? Math.round(mz) : 14;
+
+  if (Array.isArray(data.unassigned)) {
+    d.unassigned = data.unassigned
+      .map(x => normalizeName(typeof x === "string" ? x : ""))
+      .filter(Boolean);
+  }
+
+  if (Array.isArray(data.rooms)) {
+    const map = new Map(d.rooms.map(r => [r.id, r]));
+    for (const r of data.rooms) {
+      if (!r || typeof r !== "object") continue;
+      const base = map.get(r.id);
+      if (!base) continue;
+      base.name = typeof r.name === "string" && r.name.trim() ? r.name.trim() : base.name;
+      if (Array.isArray(r.people)) {
+        base.people = base.people.map((_, idx) => normalizeName(r.people[idx] || ""));
+      }
+    }
+  }
+
+  if (data.people && typeof data.people === "object") {
+    d.people = {};
+    for (const [nameRaw, rec] of Object.entries(data.people)) {
+      const name = normalizeName(nameRaw);
+      if (!name) continue;
+      d.people[name] = {
+        payments: sanitizeEntryList(rec?.payments),
+        refunds: sanitizeEntryList(rec?.refunds),
+      };
+    }
+  }
+
+  return d;
 }
-
-// add unassigned person
-btnUnassignedAdd.addEventListener("click", () => {
-  const name = normalizeName(inpUnassignedAdd.value);
-  if (!name) return alert("Zadej jméno.");
-  if (!state.unassigned) state.unassigned = [];
-  state.unassigned.push(name);
-  inpUnassignedAdd.value = "";
-  renderUnassigned();
-});
-inpUnassignedAdd.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") { e.preventDefault(); btnUnassignedAdd.click(); }
-});
