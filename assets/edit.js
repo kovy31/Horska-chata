@@ -43,6 +43,16 @@ const unassignedList = document.getElementById("unassignedList");
 const inpUnassignedAdd = document.getElementById("inpUnassignedAdd");
 const btnUnassignedAdd = document.getElementById("btnUnassignedAdd");
 
+function enforceHiddenTotalWhenLoggedOut() {
+  const hasToken = (inpToken.value || "").trim().length > 0;
+  if (!hasToken) {
+    inpTotal.value = "";
+    inpTotal.placeholder = "Přihlaste se tokenem";
+  } else if (inpTotal.placeholder === "Přihlaste se tokenem") {
+    inpTotal.placeholder = "";
+  }
+}
+
 // ---- helpers ----
 function listParticipantsInOrder(data) {
   const arr = [];
@@ -548,6 +558,7 @@ renderRoomsEditor(state);
 renderUnassigned();
 renderAdminTable();
 renderSelectedPanel();
+enforceHiddenTotalWhenLoggedOut();
 
 // zoom slider live update
 if (inpMapZoom) {
@@ -571,6 +582,9 @@ inpUnassignedAdd.addEventListener("keydown", (e) => {
 
 // Hide sensitive prefilled value until token is provided.
 inpToken.addEventListener("input", () => {
-  const hasToken = (inpToken.value || "").trim().length > 0;
-  if (!hasToken) inpTotal.value = "";
+  enforceHiddenTotalWhenLoggedOut();
 });
+
+// Browser can restore form values from session history; clear again when page becomes visible.
+window.addEventListener("pageshow", enforceHiddenTotalWhenLoggedOut);
+setTimeout(enforceHiddenTotalWhenLoggedOut, 0);
