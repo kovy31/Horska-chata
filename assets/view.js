@@ -32,6 +32,7 @@ const elMapWrap = document.getElementById("mapWrap");
 const elPayAccount = document.getElementById("payAccount");
 const elAirNote = document.getElementById("airNoteText");
 const elAirWrap = document.querySelector(".airWrap");
+const VIEW_CACHE_KEY = "horska_chata_view_cache_v1";
 
 // KPI
 const elTotal = document.getElementById("kpiTotal");
@@ -59,6 +60,24 @@ const qrSub = document.getElementById("qrSub");
 const qrCanvas = document.getElementById("qrCanvas");
 const qrSpd = document.getElementById("qrSpd");
 const qrCloseBtn = document.getElementById("qrCloseBtn");
+
+function readCachedViewData() {
+  try {
+    const raw = localStorage.getItem(VIEW_CACHE_KEY);
+    if (!raw) return null;
+    return sanitizeData(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedViewData(data) {
+  try {
+    localStorage.setItem(VIEW_CACHE_KEY, JSON.stringify(data));
+  } catch {
+    // ignore storage errors (private mode/quota)
+  }
+}
 
 // -------- modal helpers --------
 function openInfoModal(title, sub, bodyHtml) {
@@ -766,16 +785,17 @@ function renderAllData(data) {
 }
 
 // -------- AUTO-REFRESH (polling) --------
-const REFRESH_INTERVAL_MS = 30000; // 30 sekund
+const REFRESH_INTERVAL_MS = 300000; // 5 minut
 let _refreshTimer = null;
 
 async function refreshData() {
   try {
     const data = await loadDataFromGitHub();
     renderAllData(data);
+    writeCachedViewData(data);
   } catch (e) {
     console.warn("Auto-refresh failed:", e.message);
-    // tiše ignorovat – příští pokus za 30s
+    // tiše ignorovat – příští pokus za interval refresh
   }
 }
 
@@ -796,12 +816,24 @@ function startAutoRefresh() {
   try {
     const data = await loadDataFromGitHub();
     renderAllData(data);
+    writeCachedViewData(data);
     ensureAirHousingLayout();
 
     // spustit automatickou aktualizaci
     startAutoRefresh();
   } catch (e) {
     console.error("Failed to load data:", e);
-    elRoomsGrid.innerHTML = '<div class="loadingMsg" style="color:var(--bad)">Nepodařilo se načíst data. Zkuste obnovit stránku.</div>';
+    const cached = readCachedViewData();
+    if (cached) {
+      renderAllData(cached);
+      ensureAirHousingLayout();
+      startAutoRefresh();
+      elRoomsGrid.insertAdjacentHTML(
+        "afterbegin",
+        '<div class="loadingMsg" style="color:var(--warn)">Dočasně se nepodařilo načíst nová data z GitHubu, zobrazuji poslední uložená.</div>'
+      );
+    } else {
+      elRoomsGrid.innerHTML = '<div class="loadingMsg" style="color:var(--bad)">Nepodařilo se načíst data. Zkuste obnovit stránku.</div>';
+    }
   }
 })();
