@@ -73,6 +73,7 @@ function defaultData() {
     banner: "",        // text banneru nad pokoji (např. "Pro rezervaci chaty...")
     bannerVisible: false, // zobrazit banner na hlavní stránce?
     mapAddress: "",    // adresa pro Google Maps embed
+    mapZoom: 14,       // zoom úroveň pro Google Maps (3-18)
     totalCzk: CFG.DEFAULT_TOTAL_CZK,
     paymentAccount: "",
     rooms: [
@@ -85,6 +86,7 @@ function defaultData() {
       { id: "R7", type: "double", name: "Pokoj 7", people: ["", ""] },
       { id: "K1", type: "kids",   name: "Dětský pokoj", people: ["", "", "", ""] }
     ],
+    unassigned: [], // names parked outside rooms
     people: {} // { name: { payments:[{amount,date}], refunds:[{amount,date}] } }
   };
 }
@@ -195,6 +197,14 @@ function sanitizeData(data) {
   d.banner = typeof data.banner === "string" ? data.banner.trim() : "";
   d.bannerVisible = !!data.bannerVisible;
   d.mapAddress = typeof data.mapAddress === "string" ? data.mapAddress.trim() : "";
+  const mz = Number(data.mapZoom);
+  d.mapZoom = Number.isFinite(mz) && mz >= 3 && mz <= 18 ? Math.round(mz) : 14;
+
+  if (Array.isArray(data.unassigned)) {
+    d.unassigned = data.unassigned
+      .map(x => normalizeName(typeof x === "string" ? x : ""))
+      .filter(Boolean);
+  }
 
   if (Array.isArray(data.rooms)) {
     const map = new Map(d.rooms.map(r => [r.id, r]));
