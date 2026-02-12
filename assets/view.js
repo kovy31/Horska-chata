@@ -13,6 +13,7 @@ const AIRBNB_IMAGES = [
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/4d92d376-89a2-4315-9d9f-9c92201f82e5.jpeg?aki_policy=xx_large",
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/e52d40af-9273-4008-a836-d9d4be976db8.jpeg?aki_policy=xx_large",
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/7a24f910-3391-456f-9728-e7cb4e9d9cd0.jpeg?aki_policy=xx_large",
+  "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/6bb09e1d-5c6f-4bfb-88c7-1363053b06f0.jpeg?im_w=1440",
   // "https://a0.muscache.com/im/pictures/...jpeg?im_w=1200",
   // "https://a0.muscache.com/im/pictures/...jpeg?im_w=1200",
 ];
