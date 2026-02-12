@@ -120,6 +120,24 @@ function cleanupPeopleNotInRooms() {
   }
 }
 
+function applyStateFromData(newState) {
+  state = sanitizeData ? sanitizeData(newState) : newState;
+  inpTotal.value = String(state.totalCzk);
+  if (inpActualCzk) inpActualCzk.value = state.actualCzk > 0 ? String(state.actualCzk) : "";
+  inpAccount.value = state.paymentAccount || "";
+  if (inpAirNote) inpAirNote.value = state.airNote || "";
+  if (inpMapAddress) inpMapAddress.value = state.mapAddress || "";
+  if (inpMapNote) inpMapNote.value = state.mapNote || "";
+  if (inpMapZoom) { inpMapZoom.value = String(state.mapZoom || 14); mapZoomVal.textContent = inpMapZoom.value; }
+  if (inpBanner) inpBanner.value = state.banner || "";
+  if (inpBannerVisible) inpBannerVisible.checked = !!state.bannerVisible;
+  selectedName = "";
+  renderRoomsEditor(state);
+  renderUnassigned();
+  renderAdminTable();
+  renderSelectedPanel();
+}
+
 function pad2(n) {
   return String(n).padStart(2, "0");
 }
@@ -580,21 +598,8 @@ async function loadFromGitHub() {
   btnLoad.textContent = "Načítám…";
   try {
     showLoading("load");
-    state = await loadDataFromGitHub(token);
-    inpTotal.value = String(state.totalCzk);
-    if (inpActualCzk) inpActualCzk.value = state.actualCzk > 0 ? String(state.actualCzk) : "";
-    inpAccount.value = state.paymentAccount || "";
-    if (inpAirNote) inpAirNote.value = state.airNote || "";
-    if (inpMapAddress) inpMapAddress.value = state.mapAddress || "";
-    if (inpMapNote) inpMapNote.value = state.mapNote || "";
-    if (inpMapZoom) { inpMapZoom.value = String(state.mapZoom || 14); mapZoomVal.textContent = inpMapZoom.value; }
-    if (inpBanner) inpBanner.value = state.banner || "";
-    if (inpBannerVisible) inpBannerVisible.checked = !!state.bannerVisible;
-    selectedName = "";
-    renderRoomsEditor(state);
-    renderUnassigned();
-    renderAdminTable();
-    renderSelectedPanel();
+    const data = await loadDataFromGitHub(token);
+    applyStateFromData(data);
   } catch (e) {
     alert("Nepodařilo se načíst:\n" + e.message);
   } finally {
@@ -634,6 +639,8 @@ async function saveToGitHubNow() {
   try {
     showLoading("save");
     await saveDataToGitHub(state, token);
+    const fresh = await loadDataFromGitHub(token);
+    applyStateFromData(fresh);
   } catch (e) {
     alert("Nepodarilo se ulozit:\n\n" + formatSaveErrorMessage(e));
   } finally {
@@ -647,18 +654,7 @@ btnLoad.addEventListener("click", loadFromGitHub);
 btnSave.addEventListener("click", saveToGitHubNow);
 
 // init
-inpTotal.value = "";
-if (inpActualCzk) inpActualCzk.value = state.actualCzk > 0 ? String(state.actualCzk) : "";
-inpAccount.value = state.paymentAccount || "";
-if (inpAirNote) inpAirNote.value = state.airNote || "";
-if (inpMapAddress) inpMapAddress.value = state.mapAddress || "";
-if (inpMapZoom) { inpMapZoom.value = String(state.mapZoom || 14); mapZoomVal.textContent = inpMapZoom.value; }
-if (inpBanner) inpBanner.value = state.banner || "";
-if (inpBannerVisible) inpBannerVisible.checked = !!state.bannerVisible;
-renderRoomsEditor(state);
-renderUnassigned();
-renderAdminTable();
-renderSelectedPanel();
+applyStateFromData(state);
 enforceHiddenTotalWhenLoggedOut();
 if (suggestPayDate) suggestPayDate.value = todayDisplayDate();
 if (suggestRefundDate) suggestRefundDate.value = todayDisplayDate();
