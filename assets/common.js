@@ -72,6 +72,7 @@ function defaultData() {
     airNote: "",
     banner: "",        // text banneru nad pokoji (např. "Pro rezervaci chaty...")
     bannerVisible: false, // zobrazit banner na hlavní stránce?
+    mapAddress: "",    // adresa pro Google Maps embed
     totalCzk: CFG.DEFAULT_TOTAL_CZK,
     paymentAccount: "",
     rooms: [
@@ -193,6 +194,7 @@ function sanitizeData(data) {
   d.airNote = typeof data.airNote === "string" ? data.airNote.trim() : "";
   d.banner = typeof data.banner === "string" ? data.banner.trim() : "";
   d.bannerVisible = !!data.bannerVisible;
+  d.mapAddress = typeof data.mapAddress === "string" ? data.mapAddress.trim() : "";
 
   if (Array.isArray(data.rooms)) {
     const map = new Map(d.rooms.map(r => [r.id, r]));
