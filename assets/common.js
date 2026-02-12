@@ -198,8 +198,12 @@ async function loadDataFromGitHub(token = "") {
   const found = issues.find(i => (i.title || "") === CFG.ISSUE_TITLE);
   if (!found) return defaultData();
 
-  const issue = await ghFetch(`/repos/${CFG.OWNER}/${CFG.REPO}/issues/${found.number}`, auth);
-  const jsonText = extractJsonFromIssueBody(issue.body);
+  // Prefer issue body from list response to avoid extra API calls.
+  let jsonText = extractJsonFromIssueBody(found.body || "");
+  if (!jsonText && found.number) {
+    const issue = await ghFetch(`/repos/${CFG.OWNER}/${CFG.REPO}/issues/${found.number}`, auth);
+    jsonText = extractJsonFromIssueBody(issue.body);
+  }
   if (!jsonText) return defaultData();
 
   try {
