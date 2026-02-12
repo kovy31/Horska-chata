@@ -192,12 +192,13 @@ async function ghFetch(path, opts = {}) {
   return res.json();
 }
 
-async function loadDataFromGitHub() {
-  const issues = await ghFetch(`/repos/${CFG.OWNER}/${CFG.REPO}/issues?state=all&per_page=100`);
+async function loadDataFromGitHub(token = "") {
+  const auth = token ? { token } : {};
+  const issues = await ghFetch(`/repos/${CFG.OWNER}/${CFG.REPO}/issues?state=all&per_page=100`, auth);
   const found = issues.find(i => (i.title || "") === CFG.ISSUE_TITLE);
   if (!found) return defaultData();
 
-  const issue = await ghFetch(`/repos/${CFG.OWNER}/${CFG.REPO}/issues/${found.number}`);
+  const issue = await ghFetch(`/repos/${CFG.OWNER}/${CFG.REPO}/issues/${found.number}`, auth);
   const jsonText = extractJsonFromIssueBody(issue.body);
   if (!jsonText) return defaultData();
 
