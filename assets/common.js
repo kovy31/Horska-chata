@@ -193,18 +193,17 @@ async function ghFetch(path, opts = {}) {
 }
 
 async function loadDataFromGitHub() {
+  const issues = await ghFetch(`/repos/${CFG.OWNER}/${CFG.REPO}/issues?state=all&per_page=100`);
+  const found = issues.find(i => (i.title || "") === CFG.ISSUE_TITLE);
+  if (!found) return defaultData();
+
+  const issue = await ghFetch(`/repos/${CFG.OWNER}/${CFG.REPO}/issues/${found.number}`);
+  const jsonText = extractJsonFromIssueBody(issue.body);
+  if (!jsonText) return defaultData();
+
   try {
-    const issues = await ghFetch(`/repos/${CFG.OWNER}/${CFG.REPO}/issues?state=all&per_page=100`);
-    const found = issues.find(i => (i.title || "") === CFG.ISSUE_TITLE);
-    if (!found) return defaultData();
-
-    const issue = await ghFetch(`/repos/${CFG.OWNER}/${CFG.REPO}/issues/${found.number}`);
-    const jsonText = extractJsonFromIssueBody(issue.body);
-    if (!jsonText) return defaultData();
-
     return sanitizeData(JSON.parse(jsonText));
-  } catch (e) {
-    console.warn("loadDataFromGitHub fallback to default data:", e?.message || e);
+  } catch {
     return defaultData();
   }
 }
