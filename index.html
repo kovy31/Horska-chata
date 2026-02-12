@@ -3,226 +3,199 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Horská chata 12-18.7</title>
-  <link rel="stylesheet" href="./assets/style.css?v=20260212-1" />
+  <title>Editace – pokoje, platby, vratky</title>
+  <link rel="stylesheet" href="./assets/style.css?v=20260212-4" />
 </head>
 <body>
   <div class="container">
-
-    <div class="header">
+    <div class="headerRow">
       <div>
-        <h1>Týden v Alpách</h1>
-        <div class="sub">Horská chata 12-18.7</div>
+        <h1>Editace</h1>
+        <div class="sub">Zapsaní lidé v pokojích = potvrzení účastníci. Platby a vratky eviduješ jako historii (částka + datum).</div>
       </div>
+      <div class="sub"><a href="./index.html">← Zobrazení</a></div>
     </div>
 
-    <!-- Airbnb note (editable in edit.html) -->
-    <div class="airNote" id="airNoteText" aria-live="polite"></div>
-
-    <!-- Airbnb card -->
-    <div class="airWrap">
-      <a class="airCard" href="https://www.airbnb.cz/rooms/1509296019313360437" target="_blank" rel="noreferrer">
-        <div class="airImgWrap">
-          <img id="airSlideImg" class="airImg"
-            src="https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3cc519a7-fdd2-44a7-a44a-870c4d051530.jpeg?im_w=1200"
-            alt="Black Diamond – Chalet Raven" loading="lazy" />
-
-          <div class="airPill">Guest favorite</div>
-          <div class="airHeart" aria-hidden="true">♡</div>
-
-          <div class="airBadges">
-            <span class="airBadge">📅 12.–18. 7. 2026</span>
-            <span class="airBadge">💰 114 938 Kč</span>
-          </div>
-
-          <div class="airDots" id="airDots" aria-hidden="true"></div>
-        </div>
-
-        <div class="airBody">
-          <div class="airTopRow">
-            <div class="airTitle">Black Diamond – Chalet Raven</div>
-            <div class="airRating">★ 5.0 <span class="airReviews">(2)</span></div>
-          </div>
-
-          <div class="airSub">Chalet in Tignes</div>
-          <div class="airSub">7× pokoj s manželskou postelí + 1× pokoj s nižším komfortem (4 osoby)</div>
-
-          <div class="airPriceRow">
-            <span class="airPrice">114 938 Kč</span>
-            <span class="airMuted">· 6 nocí (12.–18. 7. 2026)</span>
-          </div>
-        </div>
-      </a>
-    </div>
-
-    <!-- Google Maps -->
-    <div id="mapWrap" style="display:none;"></div>
-
-    <!-- Doprava (accordion) -->
-    <section style="margin-top:14px;">
-      <details class="details">
-        <summary class="summary">
-          <span>Doprava</span>
-          <span class="chev" aria-hidden="true">▾</span>
-        </summary>
-        <div style="line-height:1.7; padding:12px 14px;">
-          <p>Na místo pojedeme auty.</p>
-          <p>Pro všechny účastníky vytvoříme skupinu, kde se mezi sebou domluvíte, kdo má volné místo a kdo se k někomu přidá. Neboj, nikoho tam nenecháme stopovat 😄</p>
-          <p>Domluvu ohledně benzínu a případného vyrovnání si pak vyřešte mezi sebou podle dohody.</p>
-        </div>
-      </details>
-    </section>
-
-    <div class="spacer"></div>
-
-    <!-- Banner -->
-    <div id="bannerWrap" style="display:none;"></div>
-
-    <div class="spacer"></div>
-
-    <!-- Who goes -->
-    <section>
-      <div class="sectionHead">
+    <div class="panel">
+      <div class="panelGrid">
         <div>
-          <div class="sectionTitle">Kdo jede</div>
-          <div class="sectionSub">Potvrzení účastníci (zapsaní v pokojích)</div>
+          <label class="label">Celková cena (Kč)</label>
+          <input id="inpTotal" type="number" min="1" step="1" autocomplete="off" />
         </div>
-        <div class="statPill" id="whoStat">—</div>
+
+        <div>
+          <label class="label">Skutečná cena (Kč) – po zaplacení chaty</label>
+          <input id="inpActualCzk" type="number" min="0" step="1" placeholder="ponech prázdné dokud není chata zaplacena" />
+          <div class="subSmall">Pokud je vyplněno, všechny výpočty se řídí touto cenou. Jinak se používá odhadovaná cena navýšená o 5 %.</div>
+        </div>
+
+        <div>
+          <label class="label">Číslo účtu</label>
+          <input id="inpAccount" type="text" placeholder="např. 123456789/0100" />
+          <div class="subSmall">Zobrazuje se ve financích na hlavní stránce.</div>
+        </div>
+        <div>
+          <label class="label">Text u ubytování (volitelné)</label>
+          <textarea id="inpAirNote" rows="3" placeholder="Např. info k check-inu, rozdělení, poznámka…"></textarea>
+          <div class="subSmall">Zobrazuje se nad Airbnb kartou na hlavní stránce.</div>
+        </div>
+
+        <div>
+          <label class="label">Adresa pro mapu (volitelné)</label>
+          <input id="inpMapAddress" type="text" placeholder="Např. Tignes, France" />
+          <div style="margin-top:6px;">
+            <label class="label" style="display:inline; margin-right:8px;">Zoom mapy</label>
+            <input id="inpMapZoom" type="range" min="3" max="18" value="14" style="width:140px; vertical-align:middle;" />
+            <span id="mapZoomVal" style="font-size:12px; margin-left:4px;">14</span>
+          </div>
+          <div class="subSmall">Google Maps se zobrazí pod Airbnb kartou.</div>
+        </div>
+
+        <div>
+          <label class="label">Text pod mapou (volitelné)</label>
+          <textarea id="inpMapNote" rows="2" placeholder="Např. přesná adresa ubytování…"></textarea>
+          <div class="subSmall">Zobrazí se pod mapou na hlavní stránce. Může být dočasně prázdné.</div>
+        </div>
+
+        <div>
+          <label class="label">Červený banner (volitelné)</label>
+          <textarea id="inpBanner" rows="2" placeholder="Např. Potřebujeme 10 lidí na zaplacení chaty…"></textarea>
+          <div style="margin-top:6px;">
+            <label><input type="checkbox" id="inpBannerVisible" /> Zobrazit banner na hlavní stránce</label>
+          </div>
+          <div class="subSmall">Červený informační pruh nad sekcí „Kdo jede".</div>
+        </div>
+
+        <div>
+          <label class="label">GitHub token (pro uložení)</label>
+          <input id="inpToken" type="text" autocomplete="off" placeholder="Fine-grained PAT" style="-webkit-text-security:disc;" />
+          <div class="subSmall">Token se neukládá – zadává se jen lokálně v prohlížeči.</div>
+        </div>
       </div>
-      <div class="chips" id="whoChips"></div>
-    </section>
 
-    <div class="spacer"></div>
+      <div class="btnRow">
+        <button class="btn" id="btnLoad">Načíst</button>
+        <button class="btn primary" id="btnSave">Uložit</button>
+      </div>
+    </div>
 
-    <!-- Price scale (collapsible) -->
-    <section>
-      <details class="details" id="priceScaleDetails">
-        <summary class="summary">
-          <span>Jak to budeme mít s pokoji a cenou</span>
-          <span class="chev" aria-hidden="true">▾</span>
-        </summary>
-        <div id="priceScaleBody" style="margin-top:12px;"></div>
-      </details>
-    </section>
-
-    <div class="spacer"></div>
-
-    <!-- Rooms -->
-    <section>
+    <div class="section">
       <div class="sectionHead">
         <div>
           <div class="sectionTitle">Pokoje</div>
-          <div class="sectionSub">Rozdělení ubytování</div>
+          <div class="sectionSub">Vyplň jména lidí v pokojích. Prázdné pole = nikdo.</div>
         </div>
-        <div class="statPill" id="capStat">—</div>
       </div>
-      <div class="grid" id="roomsGrid"></div>
-    </section>
 
-    <!-- Finance -->
-    <section class="section">
-      <details class="details">
-        <summary class="summary">
-          <span>Finance</span>
-          <span class="chev" aria-hidden="true">▾</span>
-        </summary>
+      <div id="editGrid" class="editGrid"></div>
 
-        <div class="payBox">
-          <div class="payBoxTitle">Platba</div>
-          <div class="payBoxRow">
-            <div class="payBoxLabel">Číslo účtu</div>
-            <div class="payBoxValue mono" id="payAccount">—</div>
+      <!-- Unassigned people (parked outside rooms) -->
+      <div id="unassignedWrap" style="display:none; margin-top:14px;">
+        <div class="roomEdit">
+          <div class="roomEditTop">
+            <div>
+              <div class="roomEditName">Nepřiřazení</div>
+              <div class="roomEditMeta">Lidé mimo pokoje – čekají na přiřazení</div>
+            </div>
           </div>
-          <div class="payBoxRow">
-            <div class="payBoxLabel">Poznámka</div>
-            <div class="payBoxValue">Do poznámky u platby napiš <b>jen své jméno</b>.</div>
+          <div id="unassignedList" class="slots"></div>
+          <div style="margin-top:8px;">
+            <div class="slotRow">
+              <input id="inpUnassignedAdd" type="text" placeholder="přidat jméno…" />
+              <button class="btn" id="btnUnassignedAdd" type="button">Přidat</button>
+            </div>
           </div>
         </div>
-
-        <!-- KPI: bez ceny za plnou/dětskou osobu -->
-        <div class="kpi kpi4">
-          <div class="item">
-            <div class="label">Celková cena</div>
-            <div class="value" id="kpiTotal">—</div>
-            <div class="subSmall" id="kpiTotalNote" style="margin-top:2px;"></div>
-          </div>
-          <div class="item">
-            <div class="label">Celkem zaplaceno</div>
-            <div class="value" id="kpiPaid">—</div>
-          </div>
-          <div class="item">
-            <div class="label">Chybí vybrat</div>
-            <div class="value" id="kpiNeed">—</div>
-          </div>
-          <div class="item">
-            <div class="label">Přebytek</div>
-            <div class="value" id="kpiSurplus">—</div>
-          </div>
-        </div>
-
-        <div class="tableWrap">
-          <h2 style="margin:14px 0 6px 0; font-size:16px;">Kdo kolik zaplatil a vyrovnání</h2>
-
-          <div class="desktopTable">
-            <table class="table" id="payTable">
-              <thead>
-                <tr>
-                  <th>Jméno</th>
-                  <th>Pokoj</th>
-                  <th>Má platit</th>
-                  <th>Uhrazeno</th>
-                  <th>Vyrovnání</th>
-                  <th>QR</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-
-          <div class="mobileList" id="payList"></div>
-        </div>
-      </details>
-    </section>
-
-  </div>
-
-  <!-- Info modal -->
-  <div class="modal" id="infoModal" aria-hidden="true">
-    <div class="modalBackdrop" data-close="1"></div>
-    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
-      <div class="modalHead">
-        <div>
-          <div class="modalTitle" id="infoTitle">Vyrovnání</div>
-          <div class="modalSub" id="infoSub">—</div>
-        </div>
-        <button class="iconBtn" id="infoCloseBtn" aria-label="Zavřít">✕</button>
-      </div>
-      <div class="modalBody" id="infoBody">—</div>
-    </div>
-  </div>
-
-  <!-- QR modal -->
-  <div class="modal" id="qrModal" aria-hidden="true">
-    <div class="modalBackdrop" data-close="1"></div>
-    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="qrTitle">
-      <div class="modalHead">
-        <div>
-          <div class="modalTitle" id="qrTitle">QR platba</div>
-          <div class="modalSub" id="qrSub">—</div>
-        </div>
-        <button class="iconBtn" id="qrCloseBtn" aria-label="Zavřít">✕</button>
-      </div>
-      <div class="modalBody">
-        <div class="qrWrap">
-          <canvas id="qrCanvas" width="240" height="240" aria-label="QR kód"></canvas>
-        </div>
-        <div class="subSmall" id="qrSpd">—</div>
       </div>
     </div>
+
+    <div class="section">
+      <div class="sectionHead">
+        <div>
+          <div class="sectionTitle">Platby & vratky</div>
+          <div class="sectionSub">Klikni na jméno a zapiš platby / vratky jako historii.</div>
+        </div>
+
+        <div class="kpiMini">
+          <div class="kpiMiniItem">
+            <div class="kpiMiniLabel">Zaplaceno</div>
+            <div class="kpiMiniValue" id="kpiPaid">—</div>
+          </div>
+          <div class="kpiMiniItem">
+            <div class="kpiMiniLabel">Vráceno</div>
+            <div class="kpiMiniValue" id="kpiRefunded">—</div>
+          </div>
+          <div class="kpiMiniItem">
+            <div class="kpiMiniLabel">Přebytek</div>
+            <div class="kpiMiniValue" id="kpiSurplus">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="adminLayout">
+        <div class="adminLeft">
+          <table class="table" id="adminTable">
+            <thead>
+              <tr>
+                <th>Jméno</th>
+                <th>Pokoj</th>
+                <th>Má platit</th>
+                <th>Zaplaceno</th>
+                <th>Vráceno</th>
+                <th>Reálně uhrazeno</th>
+                <th>K vrácení</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="subSmall" id="adminEmpty" style="display:none; margin-top:10px;">Zatím nejsou vyplněná žádná jména v pokojích.</div>
+        </div>
+
+        <div class="adminRight">
+          <div class="panel small">
+            <div class="panelTitle" id="selTitle">—</div>
+            <div class="panelSub" id="selMeta">—</div>
+
+            <div class="subSmall" id="suggestHint" style="margin:10px 0 6px 0; display:none;"></div>
+
+            <div class="twoCols">
+              <div>
+                <div class="label">Přidat platbu</div>
+                <div class="row">
+                  <input id="suggestPay" type="number" min="0" step="1" placeholder="částka" />
+                  <button class="btn" id="btnAddPay">Přidat</button>
+                </div>
+              </div>
+
+              <div>
+                <div class="label">Přidat vratku</div>
+                <div class="row">
+                  <input id="suggestRefund" type="number" min="0" step="1" placeholder="částka" />
+                  <button class="btn" id="btnAddRefund">Přidat</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="subSmall" style="margin-top:12px;">Datum se nastaví na dnešek. V historii pak můžeš upravit.</div>
+
+            <div class="hr"></div>
+
+            <div class="label" style="margin-bottom:6px;">Historie plateb</div>
+            <div id="payListAdmin"></div>
+
+            <div class="hr"></div>
+
+            <div class="label" style="margin-bottom:6px;">Historie vratek</div>
+            <div id="refundListAdmin"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
-  <script src="./assets/config.js?v=20260212-1"></script>
-  <script src="./assets/common.js?v=20260212-1"></script>
-  <script src="./assets/view.js?v=20260212-1"></script>
+  <script src="./assets/config.js?v=20260212-4"></script>
+  <script src="./assets/common.js?v=20260212-4"></script>
+  <script src="./assets/edit.js?v=20260212-4"></script>
 </body>
 </html>
