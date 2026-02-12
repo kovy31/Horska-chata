@@ -836,6 +836,37 @@ textarea{ resize:vertical; }
 .adminLeft{ overflow-x:auto; }
 .adminRight{}
 
+#adminTable{
+  table-layout:fixed;
+}
+#adminTable th,
+#adminTable td{
+  padding:5px 4px;
+  font-size:11px;
+  line-height:1.2;
+  white-space:normal;
+  word-break:break-word;
+}
+#adminTable th:nth-child(1),
+#adminTable td:nth-child(1){ width:20%; }
+#adminTable th:nth-child(2),
+#adminTable td:nth-child(2){ width:14%; }
+#adminTable th:nth-child(3),
+#adminTable td:nth-child(3),
+#adminTable th:nth-child(4),
+#adminTable td:nth-child(4),
+#adminTable th:nth-child(5),
+#adminTable td:nth-child(5),
+#adminTable th:nth-child(6),
+#adminTable td:nth-child(6),
+#adminTable th:nth-child(7),
+#adminTable td:nth-child(7){ width:13%; }
+
+#adminTable .btn.tiny{
+  width:100%;
+  padding:5px 6px;
+}
+
 .twoCols{
   display:grid;
   grid-template-columns:1fr 1fr;
