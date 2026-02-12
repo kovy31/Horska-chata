@@ -409,7 +409,7 @@ function renderRooms(data) {
         </div>`;
     }).join("");
 
-    const typeLabel = origRoom.type === "kids" ? "Dětský pokoj (nižší komfort)" : "Dvoulůžko (standard)";
+    const typeLabel = origRoom.type === "kids" ? "Dvě palandy" : "Manželská postel";
     const occupancy = `${roomFilled}/${people.length}`;
 
     const card = document.createElement("div");
