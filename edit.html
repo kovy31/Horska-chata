@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Editace – pokoje, platby, vratky</title>
-  <link rel="stylesheet" href="./assets/style.css?v=20260212-11" />
+  <link rel="stylesheet" href="./assets/style.css?v=20260212-12" />
 </head>
 <body>
   <div class="container">
@@ -200,8 +200,18 @@
 
   </div>
 
+  <!-- Loading overlay for GitHub operations -->
+  <div class="loadingOverlay" id="loadingOverlay" aria-hidden="true">
+    <div class="loadingCard">
+      <div class="loadingSpinner" aria-hidden="true"></div>
+      <div class="loadingTitle" id="loadingTitle">Pracuji s GitHubem…</div>
+      <div class="loadingText" id="loadingText">Načítám data, chvíli strpení.</div>
+      <div class="subSmall loadingNote" id="loadingNote">Nezavírej stránku, github občas reaguje pomaleji.</div>
+    </div>
+  </div>
+
   <script src="./assets/config.js?v=20260212-4"></script>
   <script src="./assets/common.js?v=20260212-4"></script>
-  <script src="./assets/edit.js?v=20260212-7"></script>
+  <script src="./assets/edit.js?v=20260212-8"></script>
 </body>
 </html>
