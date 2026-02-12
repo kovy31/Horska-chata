@@ -92,11 +92,67 @@ function cleanupPeopleNotInRooms() {
   }
 }
 
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+function toDisplayDateDDMMYYYY(y, m, d) {
+  return `${pad2(d)}-${pad2(m)}-${String(y)}`;
+}
+
+function parseFlexibleDate(rawDate) {
+  const d = String(rawDate || "").trim();
+  if (!d) return null;
+
+  let y, m, day;
+  let match = d.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (match) {
+    day = Number(match[1]);
+    m = Number(match[2]);
+    y = Number(match[3]);
+  } else {
+    // Backward compatibility for older stored entries.
+    match = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    y = Number(match[1]);
+    m = Number(match[2]);
+    day = Number(match[3]);
+  }
+
+  const dt = new Date(y, m - 1, day);
+  if (
+    dt.getFullYear() !== y ||
+    dt.getMonth() !== m - 1 ||
+    dt.getDate() !== day
+  ) {
+    return null;
+  }
+  return { y, m, d: day };
+}
+
+function todayDisplayDate() {
+  const t = parseFlexibleDate(todayISO());
+  return t ? toDisplayDateDDMMYYYY(t.y, t.m, t.d) : "01-01-1970";
+}
+
+function displayDate(rawDate) {
+  const p = parseFlexibleDate(rawDate);
+  if (!p) return String(rawDate || "").trim();
+  return toDisplayDateDDMMYYYY(p.y, p.m, p.d);
+}
+
+function dateSortValue(rawDate) {
+  const p = parseFlexibleDate(rawDate);
+  if (!p) return -Infinity;
+  return new Date(p.y, p.m - 1, p.d).getTime();
+}
+
 function normalizeEntryDateInput(rawDate) {
   const d = String(rawDate || "").trim();
-  if (!d) return todayISO();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
-  return d;
+  if (!d) return todayDisplayDate();
+  const parsed = parseFlexibleDate(d);
+  if (!parsed) return null;
+  return toDisplayDateDDMMYYYY(parsed.y, parsed.m, parsed.d);
 }
 
 // ---- rooms editor ----
@@ -388,14 +444,14 @@ function renderSelectedPanel() {
 }
 
 function renderHistoryList(list, kind) {
-  const arr = (list || []).slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const arr = (list || []).slice().sort((a, b) => dateSortValue(b.date) - dateSortValue(a.date));
   if (!arr.length) return `<div class="subSmall">—</div>`;
   return arr.map((x, idx) => `
     <div class="roomCard" style="margin-bottom:8px;">
       <div class="roomTop">
         <div>
           <div class="roomName">${formatCzk(x.amount)}</div>
-          <div class="roomMeta">${x.date || "—"}</div>
+          <div class="roomMeta">${displayDate(x.date) || "—"}</div>
         </div>
         <div style="display:flex; gap:8px;">
           <button class="btn" data-edit="${kind}" data-idx="${idx}" type="button">Upravit</button>
@@ -432,9 +488,10 @@ function bindHistoryButtons(rec) {
       const a = Math.round(Number(amount) || 0);
       if (!(a > 0)) return alert("Neplatná částka.");
 
-      const date = prompt("Datum (YYYY-MM-DD):", item.date || todayISO());
+      const date = prompt("Datum (DD-MM-YYYY):", displayDate(item.date) || todayDisplayDate());
       if (date === null) return;
-      const d = String(date || "").trim() || todayISO();
+      const d = normalizeEntryDateInput(date);
+      if (!d) return alert("Neplatné datum (použij DD-MM-YYYY).");
 
       item.amount = a;
       item.date = d;
@@ -452,7 +509,7 @@ btnAddPay.addEventListener("click", () => {
   const a = Math.round(Number(suggestPay.value) || 0);
   if (!(a > 0)) return alert("Neplatná částka.");
   const d = normalizeEntryDateInput(suggestPayDate?.value);
-  if (!d) return alert("Neplatné datum platby (použij YYYY-MM-DD).");
+  if (!d) return alert("Neplatné datum platby (použij DD-MM-YYYY).");
   const rec = state.people[selectedName] || (state.people[selectedName] = { payments: [], refunds: [] });
   rec.payments.push({ amount: a, date: d });
   cleanupEmptyEntries(rec);
@@ -465,7 +522,7 @@ btnAddRefund.addEventListener("click", () => {
   const a = Math.round(Number(suggestRefund.value) || 0);
   if (!(a > 0)) return alert("Neplatná částka.");
   const d = normalizeEntryDateInput(suggestRefundDate?.value);
-  if (!d) return alert("Neplatné datum vratky (použij YYYY-MM-DD).");
+  if (!d) return alert("Neplatné datum vratky (použij DD-MM-YYYY).");
   const rec = state.people[selectedName] || (state.people[selectedName] = { payments: [], refunds: [] });
   rec.refunds.push({ amount: a, date: d });
   cleanupEmptyEntries(rec);
@@ -572,8 +629,8 @@ renderUnassigned();
 renderAdminTable();
 renderSelectedPanel();
 enforceHiddenTotalWhenLoggedOut();
-if (suggestPayDate) suggestPayDate.value = todayISO();
-if (suggestRefundDate) suggestRefundDate.value = todayISO();
+if (suggestPayDate) suggestPayDate.value = todayDisplayDate();
+if (suggestRefundDate) suggestRefundDate.value = todayDisplayDate();
 
 // zoom slider live update
 if (inpMapZoom) {
