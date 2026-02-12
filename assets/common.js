@@ -132,6 +132,44 @@ function extractJsonFromIssueBody(body) {
   return jsonText || null;
 }
 
+function parseGitHubErrorText(text) {
+  if (!text) return "";
+  try {
+    const parsed = JSON.parse(text);
+    const main = parsed?.message ? String(parsed.message) : "";
+    const errs = Array.isArray(parsed?.errors)
+      ? parsed.errors
+          .map((e) => {
+            if (typeof e === "string") return e;
+            if (e && typeof e === "object") {
+              const parts = [e.code, e.field, e.resource].filter(Boolean);
+              return parts.join(" / ");
+            }
+            return "";
+          })
+          .filter(Boolean)
+          .join("; ")
+      : "";
+    return [main, errs].filter(Boolean).join(" | ");
+  } catch {
+    return String(text).trim();
+  }
+}
+
+function explainGitHubApiError(status, detail) {
+  const d = detail ? ` Detaily: ${detail}` : "";
+  if (status === 401) {
+    return "Token je neplatny nebo expirovany. Vytvor novy Fine-grained PAT a vloz ho znovu." + d;
+  }
+  if (status === 403) {
+    return "Token nema prava pro zapis do Issues. Zkontroluj repository permissions: Issues (Read and write)." + d;
+  }
+  if (status === 404) {
+    return "Repo nebo API endpoint nebyl nalezen. Zkontroluj OWNER/REPO v assets/config.js a ze token ma pristup k tomuto repozitari." + d;
+  }
+  return `GitHub API vratilo chybu ${status}.${d}`;
+}
+
 async function ghFetch(path, opts = {}) {
   const url = `https://api.github.com${path}`;
   const res = await fetch(url, {
@@ -145,7 +183,11 @@ async function ghFetch(path, opts = {}) {
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`GitHub API error ${res.status}: ${text || res.statusText}`);
+    const detail = parseGitHubErrorText(text || res.statusText);
+    const err = new Error(explainGitHubApiError(res.status, detail));
+    err.status = res.status;
+    err.detail = detail;
+    throw err;
   }
   return res.json();
 }
