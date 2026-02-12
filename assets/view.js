@@ -5,7 +5,6 @@ const AIRBNB_IMAGES = [
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3cc519a7-fdd2-44a7-a44a-870c4d051530.jpeg?im_w=1200",
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3d6a0041-65ad-4ba4-90c1-d971de85fe95.jpeg?im_w=1200",
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/3a516abc-1e0d-4f69-9bee-6d5095ac0ef3.jpeg?im_w=1200",
-  "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/6bb09e1d-5c6f-4bfb-88c7-1363053b06f0.jpeg?im_w=1440",
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/105b8a30-e224-4bc2-a3a7-602d091d8673.jpeg?im_w=1200",
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/06912285-7757-4cf7-bb84-aacf81473236.jpeg?im_w=720",
   "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1509296019313360437/original/4dc64b84-fddc-44a3-8e6c-1686307250dd.jpeg?im_w=720",
@@ -137,6 +136,45 @@ function slotLabel(idx, roomType) {
     return ["A", "B", "C", "D"][idx] || String(idx + 1);
   }
   return String(idx + 1);
+}
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+function parseFlexibleDate(rawDate) {
+  const d = String(rawDate || "").trim();
+  if (!d) return null;
+
+  let y, m, day;
+  let match = d.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (match) {
+    day = Number(match[1]);
+    m = Number(match[2]);
+    y = Number(match[3]);
+  } else {
+    match = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    y = Number(match[1]);
+    m = Number(match[2]);
+    day = Number(match[3]);
+  }
+
+  const dt = new Date(y, m - 1, day);
+  if (
+    dt.getFullYear() !== y ||
+    dt.getMonth() !== m - 1 ||
+    dt.getDate() !== day
+  ) {
+    return null;
+  }
+  return { y, m, d: day };
+}
+
+function formatDisplayDate(rawDate) {
+  const p = parseFlexibleDate(rawDate);
+  if (!p) return (rawDate || "—");
+  return `${pad2(p.d)}-${pad2(p.m)}-${p.y}`;
 }
 
 /**
@@ -629,11 +667,11 @@ function renderFinance(data) {
       const rec = data.people?.[name] || { payments: [], refunds: [] };
 
       const p = (rec.payments || [])
-        .map(x => `<li>${formatCzk(x.amount)} <span class="modalDate">${x.date || "—"}</span></li>`)
+        .map(x => `<li>${formatCzk(x.amount)} <span class="modalDate">${formatDisplayDate(x.date)}</span></li>`)
         .join("") || "<li class='emptyNote'>Žádné platby</li>";
 
       const r = (rec.refunds || [])
-        .map(x => `<li>${formatCzk(x.amount)} <span class="modalDate">${x.date || "—"}</span></li>`)
+        .map(x => `<li>${formatCzk(x.amount)} <span class="modalDate">${formatDisplayDate(x.date)}</span></li>`)
         .join("") || "<li class='emptyNote'>Žádné vratky</li>";
 
       const mustPay = shouldPayFor(name);
