@@ -639,8 +639,8 @@ async function saveToGitHubNow() {
   try {
     showLoading("save");
     await saveDataToGitHub(state, token);
-    const fresh = await loadDataFromGitHub(token);
-    applyStateFromData(fresh);
+    // Po uložení necháme lokální stav tak, jak je.
+    // GitHub může mít mírné zpoždění, ale edit stránka zůstává zdrojem pravdy.
   } catch (e) {
     alert("Nepodarilo se ulozit:\n\n" + formatSaveErrorMessage(e));
   } finally {
