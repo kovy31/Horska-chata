@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Editace – pokoje, platby, vratky</title>
-  <link rel="stylesheet" href="./assets/style.css?v=20260211-4" />
+  <link rel="stylesheet" href="./assets/style.css?v=20260212-1" />
 </head>
 <body>
   <div class="container">
@@ -21,6 +21,12 @@
         <div>
           <label class="label">Celková cena (Kč)</label>
           <input id="inpTotal" type="number" min="1" step="1" />
+        </div>
+
+        <div>
+          <label class="label">Skutečná cena (Kč) – po zaplacení chaty</label>
+          <input id="inpActualCzk" type="number" min="0" step="1" placeholder="ponech prázdné dokud není chata zaplacena" />
+          <div class="subSmall">Pokud je vyplněno, všechny výpočty se řídí touto cenou. Jinak se používá odhadovaná cena navýšená o 5 %.</div>
         </div>
 
         <div>
@@ -42,7 +48,13 @@
             <input id="inpMapZoom" type="range" min="3" max="18" value="14" style="width:140px; vertical-align:middle;" />
             <span id="mapZoomVal" style="font-size:12px; margin-left:4px;">14</span>
           </div>
-          <div class="subSmall">Google Maps se zobrazí pod Airbnb kartou. Pod mapou se ukáže adresa.</div>
+          <div class="subSmall">Google Maps se zobrazí pod Airbnb kartou.</div>
+        </div>
+
+        <div>
+          <label class="label">Text pod mapou (volitelné)</label>
+          <textarea id="inpMapNote" rows="2" placeholder="Např. přesná adresa ubytování…"></textarea>
+          <div class="subSmall">Zobrazí se pod mapou na hlavní stránce. Může být dočasně prázdné.</div>
         </div>
 
         <div>
@@ -130,6 +142,8 @@
                 <th>Má platit</th>
                 <th>Zaplaceno</th>
                 <th>Vráceno</th>
+                <th>Reálně uhrazeno</th>
+                <th>K vrácení</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -180,8 +194,8 @@
 
   </div>
 
-  <script src="./assets/config.js?v=20260211-2"></script>
-  <script src="./assets/common.js?v=20260211-2"></script>
-  <script src="./assets/edit.js?v=20260211-2"></script>
+  <script src="./assets/config.js?v=20260212-1"></script>
+  <script src="./assets/common.js?v=20260212-1"></script>
+  <script src="./assets/edit.js?v=20260212-1"></script>
 </body>
 </html>
