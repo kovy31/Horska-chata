@@ -727,7 +727,12 @@ function initSlider() {
     // map
     if (data.mapAddress && elMapWrap) {
       const q = encodeURIComponent(data.mapAddress);
-      elMapWrap.innerHTML = `<div class="mapEmbed"><iframe src="https://maps.google.com/maps?q=${q}&output=embed&z=14" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>`;
+      const z = data.mapZoom || 14;
+      elMapWrap.innerHTML = `
+        <div class="mapEmbed">
+          <iframe src="https://maps.google.com/maps?q=${q}&output=embed&z=${z}" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+        <div class="mapAddress">${data.mapAddress}</div>`;
       elMapWrap.style.display = "block";
     }
 
