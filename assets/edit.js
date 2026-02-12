@@ -634,7 +634,6 @@ async function saveToGitHubNow() {
   try {
     showLoading("save");
     await saveDataToGitHub(state, token);
-    alert("Uloženo do GitHub Issue.");
   } catch (e) {
     alert("Nepodarilo se ulozit:\n\n" + formatSaveErrorMessage(e));
   } finally {
