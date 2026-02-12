@@ -163,50 +163,14 @@ function ensureAirHousingLayout() {
   if (!row) {
     row = document.createElement("div");
     row.id = "airHousingRow";
-    // insert row where airNote currently is (airNote exists in DOM already)
-    const parent = elAirWrap.parentElement;
-    parent.insertBefore(row, elAirWrap); // place before airWrap
 
-    // move airWrap into row
+    // Insert row where airNote currently is and move both blocks into it.
+    const parent = elAirWrap.parentElement;
+    parent.insertBefore(row, elAirWrap);
+
     row.appendChild(elAirWrap);
-    // move airNote into row (right on desktop)
     row.appendChild(elAirNote);
   }
-
-  // Apply responsive inline styles
-  const mq = window.matchMedia("(min-width: 900px)");
-  const apply = () => {
-    if (mq.matches) {
-      // desktop: card left, note right
-      row.style.display = "flex";
-      row.style.gap = "16px";
-      row.style.alignItems = "flex-start";
-      row.style.justifyContent = "center";
-      elAirWrap.style.margin = "14px 0 0";
-      elAirWrap.style.flex = "0 0 auto";
-
-      elAirNote.style.margin = "14px 0 0";
-      elAirNote.style.maxWidth = "360px";
-      elAirNote.style.width = "100%";
-      elAirNote.style.flex = "0 1 360px";
-    } else {
-      // mobile: note under card
-      row.style.display = "block";
-      row.style.gap = "";
-      row.style.alignItems = "";
-      row.style.justifyContent = "";
-
-      elAirWrap.style.margin = "14px 0 0";
-      elAirNote.style.margin = "8px auto 0";
-      elAirNote.style.maxWidth = "560px";
-      elAirNote.style.width = "";
-      elAirNote.style.flex = "";
-    }
-  };
-
-  apply();
-  // keep updated on resize
-  mq.addEventListener?.("change", apply);
 }
 
 // -------- render: who goes --------
