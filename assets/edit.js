@@ -7,6 +7,8 @@ const inpTotal = document.getElementById("inpTotal");
 const inpAccount = document.getElementById("inpAccount");
 const inpAirNote = document.getElementById("inpAirNote");
 const inpMapAddress = document.getElementById("inpMapAddress");
+const inpMapZoom = document.getElementById("inpMapZoom");
+const mapZoomVal = document.getElementById("mapZoomVal");
 const inpBanner = document.getElementById("inpBanner");
 const inpBannerVisible = document.getElementById("inpBannerVisible");
 const inpToken = document.getElementById("inpToken");
@@ -34,6 +36,10 @@ const btnLoad = document.getElementById("btnLoad");
 const btnSave = document.getElementById("btnSave");
 
 const editGrid = document.getElementById("editGrid");
+const unassignedWrap = document.getElementById("unassignedWrap");
+const unassignedList = document.getElementById("unassignedList");
+const inpUnassignedAdd = document.getElementById("inpUnassignedAdd");
+const btnUnassignedAdd = document.getElementById("btnUnassignedAdd");
 
 // ---- helpers ----
 function listParticipantsInOrder(data) {
@@ -154,11 +160,68 @@ function renderRoomsEditor(data) {
       if (!personName) return;
 
       const free = freeSlots(state);
+      // always add "outside" option
+      const options = free.map((s, i) => `${i + 1}. ${s.label}`);
+      options.push(`${free.length + 1}. Mimo pokoje (nepřiřazení)`);
+
+      const choice = prompt(`Kam přesunout ${personName}?\n\n${options.join("\n")}\n\nZadej číslo:`);
+      if (choice === null) return;
+
+      const ci = Number(choice) - 1;
+      if (!Number.isFinite(ci) || ci < 0 || ci > free.length) return alert("Neplatná volba.");
+
+      if (ci === free.length) {
+        // move to unassigned
+        fromRoom.people[fromIdx] = "";
+        if (!state.unassigned) state.unassigned = [];
+        state.unassigned.push(personName);
+      } else {
+        const target = free[ci];
+        const toRoom = state.rooms.find(x => x.id === target.roomId);
+        if (!toRoom) return;
+        toRoom.people[target.idx] = personName;
+        fromRoom.people[fromIdx] = "";
+      }
+
+      renderRoomsEditor(state);
+      renderUnassigned();
+      renderAdminTable();
+      if (selectedName) renderSelectedPanel();
+    });
+  });
+}
+
+// ---- unassigned people ----
+function renderUnassigned() {
+  if (!state.unassigned) state.unassigned = [];
+  const list = state.unassigned.filter(n => normalizeName(n));
+
+  if (!list.length) {
+    unassignedWrap.style.display = "none";
+    return;
+  }
+
+  unassignedWrap.style.display = "block";
+  unassignedList.innerHTML = list.map((name, idx) => `
+    <div class="slotRow">
+      <input type="text" value="${name.replace(/"/g, "&quot;")}" disabled style="opacity:.7;" />
+      <button class="btn" data-assign="${idx}" type="button">Přiřadit do pokoje</button>
+      <button class="btn" data-remove-unassigned="${idx}" type="button">Smazat</button>
+    </div>
+  `).join("");
+
+  // assign to room
+  unassignedList.querySelectorAll("button[data-assign]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.getAttribute("data-assign"));
+      const personName = state.unassigned[idx];
+      if (!personName) return;
+
+      const free = freeSlots(state);
       if (!free.length) return alert("Nejsou volné sloty v žádném pokoji.");
 
-      // build options for prompt
       const options = free.map((s, i) => `${i + 1}. ${s.label}`).join("\n");
-      const choice = prompt(`Kam přesunout ${personName}?\n\n${options}\n\nZadej číslo:`);
+      const choice = prompt(`Kam přiřadit ${personName}?\n\n${options}\n\nZadej číslo:`);
       if (choice === null) return;
 
       const ci = Number(choice) - 1;
@@ -168,11 +231,23 @@ function renderRoomsEditor(data) {
       const toRoom = state.rooms.find(x => x.id === target.roomId);
       if (!toRoom) return;
 
-      // swap: move person to target, clear source
       toRoom.people[target.idx] = personName;
-      fromRoom.people[fromIdx] = "";
+      state.unassigned.splice(idx, 1);
 
       renderRoomsEditor(state);
+      renderUnassigned();
+      renderAdminTable();
+      if (selectedName) renderSelectedPanel();
+    });
+  });
+
+  // remove from unassigned
+  unassignedList.querySelectorAll("button[data-remove-unassigned]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.getAttribute("data-remove-unassigned"));
+      if (!confirm(`Smazat ${state.unassigned[idx]}?`)) return;
+      state.unassigned.splice(idx, 1);
+      renderUnassigned();
       renderAdminTable();
       if (selectedName) renderSelectedPanel();
     });
@@ -368,10 +443,12 @@ async function loadFromGitHub() {
     inpAccount.value = state.paymentAccount || "";
     if (inpAirNote) inpAirNote.value = state.airNote || "";
     if (inpMapAddress) inpMapAddress.value = state.mapAddress || "";
+    if (inpMapZoom) { inpMapZoom.value = String(state.mapZoom || 14); mapZoomVal.textContent = inpMapZoom.value; }
     if (inpBanner) inpBanner.value = state.banner || "";
     if (inpBannerVisible) inpBannerVisible.checked = !!state.bannerVisible;
     selectedName = "";
     renderRoomsEditor(state);
+    renderUnassigned();
     renderAdminTable();
     renderSelectedPanel();
   } catch (e) {
@@ -393,6 +470,7 @@ async function saveToGitHubNow() {
   state.paymentAccount = (inpAccount.value || "").trim();
   state.airNote = (inpAirNote?.value || "").trim();
   state.mapAddress = (inpMapAddress?.value || "").trim();
+  state.mapZoom = Number(inpMapZoom?.value) || 14;
   state.banner = (inpBanner?.value || "").trim();
   state.bannerVisible = inpBannerVisible?.checked || false;
 
@@ -422,8 +500,30 @@ inpTotal.value = String(state.totalCzk);
 inpAccount.value = state.paymentAccount || "";
 if (inpAirNote) inpAirNote.value = state.airNote || "";
 if (inpMapAddress) inpMapAddress.value = state.mapAddress || "";
+if (inpMapZoom) { inpMapZoom.value = String(state.mapZoom || 14); mapZoomVal.textContent = inpMapZoom.value; }
 if (inpBanner) inpBanner.value = state.banner || "";
 if (inpBannerVisible) inpBannerVisible.checked = !!state.bannerVisible;
 renderRoomsEditor(state);
+renderUnassigned();
 renderAdminTable();
 renderSelectedPanel();
+
+// zoom slider live update
+if (inpMapZoom) {
+  inpMapZoom.addEventListener("input", () => {
+    mapZoomVal.textContent = inpMapZoom.value;
+  });
+}
+
+// add unassigned person
+btnUnassignedAdd.addEventListener("click", () => {
+  const name = normalizeName(inpUnassignedAdd.value);
+  if (!name) return alert("Zadej jméno.");
+  if (!state.unassigned) state.unassigned = [];
+  state.unassigned.push(name);
+  inpUnassignedAdd.value = "";
+  renderUnassigned();
+});
+inpUnassignedAdd.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); btnUnassignedAdd.click(); }
+});
