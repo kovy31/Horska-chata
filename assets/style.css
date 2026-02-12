@@ -70,11 +70,17 @@ h1{ margin:0; font-size:22px; letter-spacing:.2px; }
 }
 
 .airCard{
+  display:block;
   width:100%;
   max-width:560px;
   text-decoration:none;
   color:var(--text);
   flex:0 1 560px;
+  border-radius:18px;
+  overflow:hidden;
+  border:1px solid var(--line);
+  box-shadow:0 10px 26px rgba(0,0,0,.22);
+  background:rgba(255,255,255,.06);
 }
 
 /* text u ubytování */
@@ -111,11 +117,7 @@ h1{ margin:0; font-size:22px; letter-spacing:.2px; }
 
 .airImgWrap{
   position:relative;
-  border-radius:18px;
   overflow:hidden;
-  border:1px solid var(--line);
-  box-shadow:0 10px 26px rgba(0,0,0,.22);
-  background:rgba(255,255,255,.06);
 }
 
 .airImg{
@@ -197,7 +199,27 @@ h1{ margin:0; font-size:22px; letter-spacing:.2px; }
 }
 .dot.active{ background:#fff; }
 
-.airBody{ padding:14px 4px 6px; }
+.airBody{ padding:14px 14px 12px; }
+
+#airHousingRow{
+  display:block;
+}
+
+#airHousingRow .airNote{
+  margin:8px auto 0;
+}
+
+@media (min-width:900px){
+  #airHousingRow{
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    gap:16px;
+  }
+  #airHousingRow .airNote{
+    margin:14px 0 0;
+  }
+}
 
 .airTopRow{
   display:flex;
