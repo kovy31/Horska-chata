@@ -27,6 +27,7 @@ const elCapStat = document.getElementById("capStat");
 
 const elPriceScaleBody = document.getElementById("priceScaleBody");
 const elBannerWrap = document.getElementById("bannerWrap");
+const elMapWrap = document.getElementById("mapWrap");
 
 const elPayAccount = document.getElementById("payAccount");
 const elAirNote = document.getElementById("airNoteText");
@@ -178,10 +179,10 @@ function ensureAirHousingLayout() {
       row.style.gap = "16px";
       row.style.alignItems = "flex-start";
       row.style.justifyContent = "center";
-      elAirWrap.style.margin = "18px 0 0";
+      elAirWrap.style.margin = "14px 0 0";
       elAirWrap.style.flex = "0 0 auto";
 
-      elAirNote.style.margin = "18px 0 0";
+      elAirNote.style.margin = "14px 0 0";
       elAirNote.style.maxWidth = "360px";
       elAirNote.style.width = "100%";
       elAirNote.style.flex = "0 1 360px";
@@ -192,7 +193,7 @@ function ensureAirHousingLayout() {
       row.style.alignItems = "";
       row.style.justifyContent = "";
 
-      elAirWrap.style.margin = "18px 0 0";
+      elAirWrap.style.margin = "14px 0 0";
       elAirNote.style.margin = "8px auto 0";
       elAirNote.style.maxWidth = "560px";
       elAirNote.style.width = "";
@@ -721,6 +722,13 @@ function initSlider() {
     if (data.airNote) {
       elAirNote.innerHTML = data.airNote;
       elAirNote.style.display = "block";
+    }
+
+    // map
+    if (data.mapAddress && elMapWrap) {
+      const q = encodeURIComponent(data.mapAddress);
+      elMapWrap.innerHTML = `<div class="mapEmbed"><iframe src="https://maps.google.com/maps?q=${q}&output=embed&z=14" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>`;
+      elMapWrap.style.display = "block";
     }
 
     // banner
