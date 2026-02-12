@@ -65,6 +65,20 @@ function roundCzk(x) {
   return Math.round(Number(x) || 0);
 }
 
+/**
+ * Effective price for all calculations:
+ * - If actualCzk is set (chata zaplacena), use it
+ * - Otherwise use totalCzk * 1.05 (5% navýšení pro kurzový rozdíl)
+ */
+function effectivePrice(data) {
+  const actual = Number(data.actualCzk);
+  if (Number.isFinite(actual) && actual > 0) {
+    return { price: Math.round(actual), isEstimate: false };
+  }
+  const base = Math.round(Number(data.totalCzk) || 0);
+  return { price: Math.round(base * 1.05), isEstimate: true };
+}
+
 // ---- data model ----
 function defaultData() {
   return {
@@ -74,7 +88,9 @@ function defaultData() {
     bannerVisible: false, // zobrazit banner na hlavní stránce?
     mapAddress: "",    // adresa pro Google Maps embed
     mapZoom: 14,       // zoom úroveň pro Google Maps (3-18)
+    mapNote: "",       // editovatelný text pod mapou (adresa ubytování apod.)
     totalCzk: CFG.DEFAULT_TOTAL_CZK,
+    actualCzk: 0,  // skutečná cena po zaplacení chaty (0 = neznámá)
     paymentAccount: "",
     rooms: [
       { id: "R1", type: "double", name: "Pokoj 1", people: ["", ""] },
@@ -192,11 +208,15 @@ function sanitizeData(data) {
   const total = Number(data.totalCzk);
   d.totalCzk = Number.isFinite(total) && total > 0 ? Math.round(total) : d.totalCzk;
 
+  const actualCzk = Number(data.actualCzk);
+  d.actualCzk = Number.isFinite(actualCzk) && actualCzk > 0 ? Math.round(actualCzk) : 0;
+
   d.paymentAccount = typeof data.paymentAccount === "string" ? data.paymentAccount.trim() : "";
   d.airNote = typeof data.airNote === "string" ? data.airNote.trim() : "";
   d.banner = typeof data.banner === "string" ? data.banner.trim() : "";
   d.bannerVisible = !!data.bannerVisible;
   d.mapAddress = typeof data.mapAddress === "string" ? data.mapAddress.trim() : "";
+  d.mapNote = typeof data.mapNote === "string" ? data.mapNote.trim() : "";
   const mz = Number(data.mapZoom);
   d.mapZoom = Number.isFinite(mz) && mz >= 3 && mz <= 18 ? Math.round(mz) : 14;
 
