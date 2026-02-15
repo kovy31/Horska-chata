@@ -246,30 +246,53 @@ function renderPriceScale(data) {
   const { total: currentN } = countPeopleByType(data.rooms);
   const cap = totalCapacity(data.rooms);
 
-  // Build price table rows for 10..cap people
+  // Room layout: standard slots first, then bunk (same order as room cards)
+  let standardCap = 0, bunkCap = 0;
+  for (const r of data.rooms || []) {
+    const slots = Array.isArray(r.people) ? r.people.length : 0;
+    if (r.type === "kids") bunkCap += slots;
+    else standardCap += slots;
+  }
+
+  // Build price table rows for 10..cap people (same logic as room cards)
   let tableRows = "";
   for (let n = 10; n <= cap; n++) {
-    // Assume worst case: all adults (no kids discount) for standard price
-    const sharesAdult = computeShares(total, n, 0);
-    const priceAdult = roundCzk(sharesAdult.adults);
+    let priceStandard = 0, priceBunk = 0;
+    let note = "";
 
-    // For kids room price (assume at least 1 kid at this count)
-    const sharesKids = computeShares(total, n - 1, 1);
-    const priceKids = roundCzk(sharesKids.kids);
+    if (n <= 10) {
+      const per = total / 10;
+      priceStandard = roundCzk(per);
+      priceBunk = priceStandard;
+      note = "min. cena (celkem\u00f710)";
+    } else if (n <= 14) {
+      const per = total / n;
+      priceStandard = roundCzk(per);
+      priceBunk = priceStandard;
+      note = "d\u011bleno " + n;
+    } else {
+      // n >= 15: use same fill order as room cards (standard first, then bunk)
+      const nStandard = Math.min(standardCap, n);
+      const nBunk = n - nStandard;
+      const shares = computeShares(total, nStandard, nBunk);
+      priceStandard = roundCzk(shares.adults);
+      priceBunk = roundCzk(shares.kids);
+      note = "palandy \u221225 %";
+    }
 
     const isCurrent = n === currentN;
     const highlight = isCurrent ? ' style="background:var(--accent);color:#000;font-weight:700;"' : "";
     const marker = isCurrent ? " (aktuálně)" : "";
 
-    const kidsCell = sharesKids.mode === "kids25"
-      ? `<td class="center">${formatCzk(priceKids)}</td>`
+    const bunkCell = n >= 15
+      ? `<td class="center">${formatCzk(priceBunk)}</td>`
       : `<td class="center" style="opacity:.4">—</td>`;
 
     tableRows += `<tr${highlight}>
       <td class="center">${n} osob${marker}</td>
-      <td class="center">${formatCzk(priceAdult)}</td>
-      ${kidsCell}
-      <td class="center">${sharesAdult.mode === "min10" ? "min. cena (celkem\u00f710)" : sharesAdult.mode === "kids25" ? "palandy \u221225 %" : "d\u011bleno " + n}</td>
+      <td class="center">${formatCzk(priceStandard)}</td>
+      ${bunkCell}
+      <td class="center">${note}</td>
     </tr>`;
   }
 
@@ -335,7 +358,7 @@ function renderPriceScale(data) {
       }
     </div>
     <h3 style="margin-bottom:8px;">Cenov\u00fd p\u0159ehled podle po\u010dtu lid\u00ed</h3>
-    <p style="margin-bottom:10px; font-size:13px; opacity:.9;">Sloupce ukazuj\u00ed <b>r\u016fzn\u00e9 sc\u00e9n\u00e1\u0159e</b>: \u201eCena / osoba\u201c = kdy\u017e v\u0161ichni ve standardn\u00edch pokoj\u00edch, \u201ePokoj s palandami\u201c = kdy\u017e je pr\u00e1v\u011b 1 osoba v pokoji s palandami. Nelze je kombinovat pro sm\u00ed\u0161en\u00e9 rozd\u011blen\u00ed.</p>
+    <p style="margin-bottom:10px; font-size:13px; opacity:.9;">Ceny odpov\u00eddaj\u00ed stejn\u00e9 logice jako v kart\u00e1ch pokoj\u016f \u2013 standardn\u00ed pokoje se pln\u00ed prvn\u00ed, pak pokoj s palandami. Sou\u010det v\u0161ech \u010d\u00e1stek v\u017edy d\u00e1 celkovou cenu.</p>
     <div style="overflow-x:auto;">
       <table class="table">
         <thead>
