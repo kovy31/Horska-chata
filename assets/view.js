@@ -269,7 +269,7 @@ function renderPriceScale(data) {
       <td class="center">${n} osob${marker}</td>
       <td class="center">${formatCzk(priceAdult)}</td>
       ${kidsCell}
-      <td class="center">${sharesAdult.mode === "min10" ? "min. cena (celkem\u00f710)" : sharesAdult.mode === "kids25" ? "d\u011btsk\u00fd \u221225 %" : "d\u011bleno " + n}</td>
+      <td class="center">${sharesAdult.mode === "min10" ? "min. cena (celkem\u00f710)" : sharesAdult.mode === "kids25" ? "palandy \u221225 %" : "d\u011bleno " + n}</td>
     </tr>`;
   }
 
@@ -280,20 +280,20 @@ function renderPriceScale(data) {
       <h3>\ud83d\udecf Pokoje</h3>
       <p>M\u00e1me:<br>
       \u2022 7 standardn\u00edch pokoj\u016f \u2013 ka\u017ed\u00fd s man\u017eelskou postel\u00ed (pro 2 osoby)<br>
-      \u2022 1 d\u011btsk\u00fd pokoj \u2013 2 palandy (4 samostatn\u00e1 l\u016f\u017eka)</p>
+      \u2022 1 pokoj s palandami \u2013 2 palandy (4 samostatn\u00e1 l\u016f\u017eka, ni\u017e\u0161\u00ed komfort)</p>
       <p>Standardn\u00ed pokoje jsou hlavn\u011b pro p\u00e1ry.<br>
-      D\u011btsk\u00fd pokoj je ide\u00e1ln\u00ed pro jednotlivce nebo kamar\u00e1dy.</p>
+      Pokoj s palandami je ide\u00e1ln\u00ed pro jednotlivce nebo kamar\u00e1dy. <b>Nejedou s n\u00e1mi \u017e\u00e1dn\u00e9 d\u011bti</b> \u2013 jde jen o typ pokoje s ni\u017e\u0161\u00edm komfortem.</p>
 
       <h3>\ud83d\udc64 Kdy\u017e jede n\u011bkdo s\u00e1m</h3>
       <p>Pokud jede\u0161 single:<br>
       \u2022 m\u016f\u017ee\u0161 se domluvit s n\u011bk\u00fdm dal\u0161\u00edm a sd\u00edlet standardn\u00ed pokoj,<br>
-      \u2022 nebo m\u016f\u017ee\u0161 b\u00fdt v d\u011btsk\u00e9m pokoji.</p>
+      \u2022 nebo m\u016f\u017ee\u0161 b\u00fdt v pokoji s palandami.</p>
       <p>Nechceme, aby byly dva standardn\u00ed pokoje obsazen\u00e9 po jednom \u010dlov\u011bku, kdy\u017e se ti dva lid\u00e9 m\u016f\u017eou d\u00e1t dohromady.<br>
       C\u00edlem je vyu\u017e\u00edt pokoje rozumn\u011b.</p>
 
       <h3>\ud83d\udc91 P\u00e1ry maj\u00ed p\u0159ednost</h3>
       <p>Proto\u017ee standardn\u00ed pokoje maj\u00ed man\u017eelsk\u00e9 postele a v\u00edc soukrom\u00ed, tak pokud bude v\u00edc p\u00e1r\u016f, maj\u00ed p\u0159ednost ve standardn\u00edch pokoj\u00edch.</p>
-      <p>Kdy\u017e bude n\u011bkdo s\u00e1m ve standardn\u00edm pokoji a objev\u00ed se p\u00e1r, m\u016f\u017ee b\u00fdt p\u0159esunut do d\u011btsk\u00e9ho pokoje \u2014 pokud si mezit\u00edm nenajde spolubydl\u00edc\u00edho.<br>
+      <p>Kdy\u017e bude n\u011bkdo s\u00e1m ve standardn\u00edm pokoji a objev\u00ed se p\u00e1r, m\u016f\u017ee b\u00fdt p\u0159esunut do pokoje s palandami \u2014 pokud si mezit\u00edm nenajde spolubydl\u00edc\u00edho.<br>
       Nic osobn\u00edho \u2013 jde jen o f\u00e9rov\u00e9 rozd\u011blen\u00ed.</p>
 
       <h3>\ud83d\udd04 Rozd\u011blen\u00ed se m\u016f\u017ee upravit</h3>
@@ -304,7 +304,8 @@ function renderPriceScale(data) {
       <p>Cena za osobu se odv\u00edj\u00ed od celkov\u00e9 ceny ubytov\u00e1n\u00ed a po\u010dtu lid\u00ed.<br>
       \u2022 Do 10 lid\u00ed se cena po\u010d\u00edt\u00e1 jako celkov\u00e1 \u010d\u00e1stka d\u011blen\u00e1 10 (aby nebyla p\u0159ehnan\u011b vysok\u00e1).<br>
       \u2022 Od 11 lid\u00ed se cena d\u011bl\u00ed skute\u010dn\u00fdm po\u010dtem osob.<br>
-      \u2022 Od 15 lid\u00ed m\u00e1 d\u011btsk\u00fd pokoj slevu 25 %.</p>
+      \u2022 Od 15 lid\u00ed m\u00e1 pokoj s palandami (ni\u017e\u0161\u00ed komfort) slevu 25 %.</p>
+      <p>Sou\u010det v\u0161ech \u010d\u00e1stek \u201eM\u00e1 platit\u201c v\u017edy odpov\u00edd\u00e1 celkov\u00e9 cen\u011b (od 11 lid\u00ed v\u00fd\u0161).</p>
       <p><b>\u010c\u00edm v\u00edc n\u00e1s pojede, t\u00edm ni\u017e\u0161\u00ed cena vyjde.</b></p>
       <p>V aplikaci v\u017edy vid\u00ed\u0161:<br>
       \u2022 kolik m\u00e1\u0161 platit,<br>
@@ -334,19 +335,31 @@ function renderPriceScale(data) {
       }
     </div>
     <h3 style="margin-bottom:8px;">Cenov\u00fd p\u0159ehled podle po\u010dtu lid\u00ed</h3>
+    <p style="margin-bottom:10px; font-size:13px; opacity:.9;">Sloupce ukazuj\u00ed <b>r\u016fzn\u00e9 sc\u00e9n\u00e1\u0159e</b>: \u201eCena / osoba\u201c = kdy\u017e v\u0161ichni ve standardn\u00edch pokoj\u00edch, \u201ePokoj s palandami\u201c = kdy\u017e je pr\u00e1v\u011b 1 osoba v pokoji s palandami. Nelze je kombinovat pro sm\u00ed\u0161en\u00e9 rozd\u011blen\u00ed.</p>
     <div style="overflow-x:auto;">
       <table class="table">
         <thead>
           <tr>
             <th>Po\u010det lid\u00ed</th>
             <th>Cena / osoba</th>
-            <th>D\u011btsk\u00fd pokoj</th>
+            <th>Pokoj s palandami</th>
             <th>Pozn\u00e1mka</th>
           </tr>
         </thead>
         <tbody>${tableRows}</tbody>
       </table>
     </div>
+    ${cap >= 18 ? (() => {
+      const sh = computeShares(total, 14, 4);
+      const adj = roundCzk(sh.adults), chd = roundCzk(sh.kids);
+      const sum = 14 * adj + 4 * chd;
+      return `
+    <div style="margin-top:14px; padding:12px 14px; border-radius:8px; background:rgba(57,217,138,0.12); border:1px solid rgba(57,217,138,0.3);">
+      <b>Při plném obsazení (18 lidí: 14 ve standardních pokojích, 4 v pokoji s palandami):</b><br>
+      standardní pokoje ${formatCzk(adj)} &middot; pokoj s palandami ${formatCzk(chd)} &middot; <b>celkem ${formatCzk(sum)}</b>
+    </div>
+    `;
+    })() : ""}
   `;
 }
 
@@ -412,7 +425,7 @@ function renderRooms(data) {
         const cur = priceForRoomType(total, data.rooms, r.rType, false);
         const priceText = formatCzk(cur.price);
         const hint = (cur.shares.mode === "kids25" && origRoom.type === "kids")
-          ? `${priceText} · sleva dětský pokoj`
+          ? `${priceText} · sleva pokoj s palandami −25 %`
           : priceText;
 
         return `
@@ -435,7 +448,7 @@ function renderRooms(data) {
         hypo.shares.mode === "min10"
           ? `min. cena (celkem÷10)`
           : isKidsDiscount
-            ? `jako ${personNum}. osoba · sleva dětský −25 %`
+            ? `jako ${personNum}. osoba · sleva pokoj s palandami −25 %`
             : `jako ${personNum}. osoba`;
 
       return `
