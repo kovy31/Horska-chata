@@ -37,8 +37,8 @@ function countPeopleByType(rooms) {
  * Pricing rules:
  * - If n <= 10: everyone share = total/10 (minimum)
  * - If 11 <= n <= 14: everyone share = total/n
- * - If n >= 15: kids share = 0.75 * standardShare, adults share = 1.0 * standardShare
- *   where standardShare = total / (adults + 0.75*kids)
+ * - If n >= 15: bunk-room share = 0.75 * standardShare (nižší komfort), standard rooms = 1.0
+ *   where standardShare = total / (standardRoomCount + 0.75*bunkRoomCount)
  */
 function computeShares(totalCzk, nAdults, nKids) {
   const total = Math.round(Number(totalCzk) || 0);
@@ -100,7 +100,7 @@ function defaultData() {
       { id: "R5", type: "double", name: "Pokoj 5", people: ["", ""] },
       { id: "R6", type: "double", name: "Pokoj 6", people: ["", ""] },
       { id: "R7", type: "double", name: "Pokoj 7", people: ["", ""] },
-      { id: "K1", type: "kids",   name: "Dětský pokoj", people: ["", "", "", ""] }
+      { id: "K1", type: "kids",   name: "Pokoj s palandami", people: ["", "", "", ""] }
     ],
     unassigned: [], // names parked outside rooms
     people: {} // { name: { payments:[{amount,date}], refunds:[{amount,date}] } }
